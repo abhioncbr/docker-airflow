@@ -4,3 +4,25 @@ This is a repository for building [Docker](https://www.docker.com/) container of
 
 * For understanding & knowing more about Airflow, please follow [curated list of resources](https://raw.githubusercontent.com/jghoman/awesome-apache-airflow).
 * Similarly, for Docker follow [curated list of resources](https://github.com/veggiemonk/awesome-docker).
+
+## Airflow components stack
+- Airflow version: 1.9.0
+- Backend database: Mysql
+- Scheduler: Celery
+- Task queue: Redis
+- Log location: AWS S3
+- User authentication: Password based
+- Docker base image: debian
+- Code enhancement: password based multiple users supporting super-user(can see all dags of all owner) feature. Currently, Airflow is working on the password based multi user feature.
+- Other features: support for google cloud platform packages in container.
+
+## General information about airflow docker image
+* There are two docker files in the folder `docker-files`.
+* Base image(DockerFile-Base1.9.0) - file for building base image which consist of packages of airflow, java, redis and other basic components.
+* Working image(DockerFile-1.9.0) - Depend on the base image. Build image with patches of airflow, creating user, installing gcp packages and setting up the working environment.
+
+## How to build images
+* for base image - There are two options
+  * build image, if you want to do some customization - `docker build -t airflow-base1.9.0:latest --file=~/docker-airflow/DockerFile-Base1.9.0 . --rm`
+  * download image - `docker pull abhioncbr/airflow-base1.9.0` and tag image as `airflow-base1.9.0`
+* for working image -`docker build -t airflow-1.9.0:latest --file=~/docker-airflow/DockerFile1.9.0 . --rm`
