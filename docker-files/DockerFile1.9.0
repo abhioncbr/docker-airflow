@@ -12,11 +12,11 @@ RUN pip install --ignore-installed six \
 	&& apt-get update -yqq && apt-get install -yqq mysql-client \
 	&& apt-get -o Dpkg::Options::="--force-confmiss" install --reinstall netbase
 
-#RUN curl https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz > /tmp/google-cloud-sdk.tar.gz
-#RUN mkdir -p /usr/local/gcloud
-#RUN tar -C /usr/local/gcloud -xvf /tmp/google-cloud-sdk.tar.gz
-#RUN /usr/local/gcloud/google-cloud-sdk/install.sh
-#RUN pip install --upgrade google-api-python-client && pip install google-cloud-storage && pip install boto3 && pip install google-auth-httplib2
+RUN curl https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz > /tmp/google-cloud-sdk.tar.gz
+RUN mkdir -p /usr/local/gcloud
+RUN tar -C /usr/local/gcloud -xvf /tmp/google-cloud-sdk.tar.gz
+RUN /usr/local/gcloud/google-cloud-sdk/install.sh
+RUN pip install --upgrade google-api-python-client && pip install google-cloud-storage && pip install boto3 && pip install google-auth-httplib2
 
 RUN groupadd -g 5006 airflow \
     && useradd -ms /bin/bash -d ${AIRFLOW_HOME}  -u 5004 -g 5006 -p airflow airflow
@@ -59,7 +59,7 @@ VOLUME ${AIRFLOW_HOME}/logs
 
 USER airflow
 
-#ENV PATH=$PATH::/usr/local/gcloud/google-cloud-sdk/bin/
+ENV PATH=$PATH::/usr/local/gcloud/google-cloud-sdk/bin/
 
 #ENV HDP_VERSION=2.6.1.0-129
 #export HDP_VERSION=${HDP_VERSION}

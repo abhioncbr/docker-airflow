@@ -16,16 +16,22 @@ This is a repository for building [Docker](https://www.docker.com/) container of
 - Code enhancement: password based multiple users supporting super-user(can see all dags of all owner) feature. Currently, Airflow is working on the password based multi user feature.
 - Other features: support for google cloud platform packages in container.
 
-## Airflow UI ports
+## Airflow ports
 - airflow portal port: 2222
 - airflow celery flower: 5555
 - redis port: 6379
 - log files exchange port: 8793
 
+## Airflow services information
+- In server container: redis, airflow webserver & scheduler is running.
+- In worker container: airflow worker & celery flower ui service is running.
+
 ## General information about airflow docker image
 * There are two docker files in the folder `docker-files`.
 * Base image(DockerFile-Base1.9.0) - file for building base image which consist of packages of airflow, java, redis and other basic components.
 * Working image(DockerFile-1.9.0) - Depend on the base image. Build image with patches of airflow, creating user, installing gcp packages and setting up the working environment.
+* Airflow scheduler needs a restart after sometime for properly scheduling of the task. Shell script for restarting scheduler is present in folder `config`
+* Airflow container by default is configured for writing logs on AWS S3. AWS credentials needs to be updated in `credentials` file in folder `config`.
 
 ## How to build images
 * for base image - There are two options
@@ -35,11 +41,15 @@ This is a repository for building [Docker](https://www.docker.com/) container of
 
 ## How to run
 * starting airflow image as a service container -
-    `docker run --net=host -p 2222:2222 -p 6379:6379 \
-    airflow-1.9.0 \
+    `docker run --net=host -p 2222:2222 -p 6379:6379
+    airflow-1.9.0
     server mysql://user:password@host:3306/db-name s3://<bucket-name>/<sub-folder> &`
 
 * starting airflow image as a service container -
-    `docker run --net=host -p 2222:2222 -p 6379:6379 \
-    airflow-1.9.0 \
+    `docker run --net=host -p 2222:2222 -p 6379:6379
+    airflow-1.9.0
     worker mysql://user:password@host:3306/db-name redis://host:6379/0 s3://<bucket-name>/<sub-folder> &`
+
+## Setting up Google Cloud Platform environment
+* Update gcp-credentials.json file with Google credentials.
+* In `entrypoint.sh` file uncomment commands related to setting up google cloud platform.
