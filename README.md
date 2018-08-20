@@ -10,11 +10,12 @@ This is a repository for building [Docker](https://www.docker.com/) container of
 - Backend database: Mysql
 - Scheduler: Celery
 - Task queue: Redis
-- Log location: AWS S3
-- User authentication: Password based
+- Log location: local file system or AWS S3
+- User authentication: Password based & support for multiple users with `superuser` privilege.
 - Docker base image: debian
 - Code enhancement: password based multiple users supporting super-user(can see all dags of all owner) feature. Currently, Airflow is working on the password based multi user feature.
 - Other features: support for google cloud platform packages in container.
+- Multiple `entrypoint.sh` for various supports like writing logs to s3 & initializing gcp in airflow container. 
 
 ## Airflow ports
 - airflow portal port: 2222
@@ -40,16 +41,34 @@ This is a repository for building [Docker](https://www.docker.com/) container of
 * for working image -`docker build -t airflow-1.9.0:latest --file=~/docker-airflow/DockerFile1.9.0 . --rm`
 
 ## How to run
-* starting airflow image as a service container -
-    `docker run --net=host -p 2222:2222 -p 6379:6379
-    airflow-1.9.0
-    server mysql://user:password@host:3306/db-name s3://<bucket-name>/<sub-folder> &`
+* General commands -
+    * starting airflow image as a `airflow-server` service container -
+    `docker run --net=host -p 2222:2222 -p 6379:6379 --name=airflow-server
+    abhioncbr/airflow-1.9.0
+    server mysql://user:password@host:3306/db-name &`
 
-* starting airflow image as a service container -
-    `docker run --net=host -p 2222:2222 -p 6379:6379
-    airflow-1.9.0
-    worker mysql://user:password@host:3306/db-name redis://host:6379/0 s3://<bucket-name>/<sub-folder> &`
+    * starting airflow image as a service container -
+    `docker run --net=host -p 5555:5555 -p 8739:8739 --name=airflow-worker
+    abhioncbr/airflow-1.9.0
+    worker mysql://user:password@host:3306/db-name redis://<airflow-server-host>:6379/0 &`
 
+* In Mac using [docker for mac](https://docs.docker.com/docker-for-mac/install/) -
+    * starting airflow image as a service container & mounting dags, code-artifacts & logs folder to host machine -
+    `docker run -p 2222:2222 -p 6379:6379 --name=airflow-server
+     -v ~/airflow-data/code-artifacts:/code-artifacts 
+     -v ~/airflow-data/logs:/usr/local/airflow/logs 
+     -v ~/airflow-data/dags:/usr/local/airflow/dags 
+     abhioncbr/airflow-1.9.0 
+     server mysql://user:password@host.docker.internal:3306:3306/<airflow-db-name> &`  
+     
+    * starting airflow image as a service container & mounting dags, code-artifacts & logs folder to host machine - 
+    `docker run -p 5555:5555 -p 8739:8739 --name=airflow-worker
+     -v ~/airflow-data/code-artifacts:/code-artifacts 
+     -v ~/airflow-data/logs:/usr/local/airflow/logs 
+     -v ~/airflow-data/dags:/usr/local/airflow/dags 
+     abhioncbr/airflow-1.9.0 
+     worker mysql://user:password@host.docker.internal:3306:3306/<airflow-db-name> redis://host.docker.internal:6379/0 &` 
+     
 ## Setting up Google Cloud Platform environment
 * Update gcp-credentials.json file with Google credentials.
 * In `entrypoint.sh` file uncomment commands related to setting up google cloud platform.
