@@ -5,10 +5,11 @@ CMD="airflow"
 
 # Starting airflow server.
 # Steps are : initialising airflow database, starting redis server, starting airflow scheduler, starting airflow webserver
-if [ "$#" -eq 2 ] && [ "$1" = "server" ]; then
+if [ "$#" -eq 3 ] && [ "$1" = "server" ]; then
 	# setting up the arguments.
     COMMAND=$1
 	MYSQL_CONNECTION=$2
+	S3_LOG_DIRECTORY=$3
 
 	# Configure airflow with mysql connection string.
 	if [ -v MYSQL_CONNECTION ]; then
@@ -18,6 +19,27 @@ if [ "$#" -eq 2 ] && [ "$1" = "server" ]; then
 
     	echo "export AIRFLOW__CORE__SQL_ALCHEMY_CONN="$MYSQL_CONNECTION>>~/.bashrc
         echo "AIRFLOW__CORE__SQL_ALCHEMY_CONN="$MYSQL_CONNECTION>>~/.profile
+	fi
+
+	# Configure airflow with s3 log directory.
+	if [ -v S3_LOG_DIRECTORY ]; then
+    	echo "setting s3 log directory ..."
+    	echo "Setting AIRFLOW__CORE__S3_LOG_FOLDER=${S3_LOG_DIRECTORY}"
+    	export AIRFLOW__CORE__S3_LOG_FOLDER=$S3_LOG_DIRECTORY
+    	echo "export AIRFLOW__CORE__S3_LOG_FOLDER="$S3_LOG_DIRECTORY>>~/.bashrc
+        echo "AIRFLOW__CORE__S3_LOG_FOLDER="$S3_LOG_DIRECTORY>>~/.profile
+
+        S3_TASK='s3.task'
+        AIRFLOW__CORE__TASK_LOG_READER=$S3_TASK
+        export AIRFLOW__CORE__S3_LOG_FOLDER=$S3_TASK
+        echo "export AIRFLOW__CORE__TASK_LOG_READER="$S3_TASK>>~/.bashrc
+        echo "AIRFLOW__CORE__TASK_LOG_READER="$S3_TASK>>~/.profile
+
+        S3_LOGGING_CLASS='airflow.config_templates.s3_logger.LOGGING_CONFIG'
+        AIRFLOW__CORE__LOGGING_CONFIG_CLASS=$S3_LOGGING_CLASS
+        export AIRFLOW__CORE__LOGGING_CONFIG_CLASS=$S3_TASK
+        echo "export AIRFLOW__CORE__LOGGING_CONFIG_CLASS="$S3_TASK>>~/.bashrc
+        echo "AIRFLOW__CORE__LOGGING_CONFIG_CLASS="$S3_TASK>>~/.profile
 	fi
 
 # ============= Starting server processes =====================
@@ -78,11 +100,12 @@ if [ "$#" -eq 2 ] && [ "$1" = "server" ]; then
 	exec -a airflow-webserver $CMD webserver > $AIRFLOW_HOME/startup_log/airflow-server.log 2>&1
 
 # Starting airflow worker.
-elif [ "$#" -eq 3 ] && [ "$1" = "worker" ]; then
+elif [ "$#" -eq 4 ] && [ "$1" = "worker" ]; then
 	# setting up the arguments.
 	COMMAND=$1
 	MYSQL_CONNECTION=$2
 	REDIS_CONNECTION=$3
+	S3_LOG_DIRECTORY=$4
 
 	# Configure airflow with mysql connection string.
 	if [ -v MYSQL_CONNECTION ]; then
@@ -92,6 +115,27 @@ elif [ "$#" -eq 3 ] && [ "$1" = "worker" ]; then
 
     	echo "export AIRFLOW__CORE__SQL_ALCHEMY_CONN="$MYSQL_CONNECTION>>~/.bashrc
         echo "AIRFLOW__CORE__SQL_ALCHEMY_CONN="$MYSQL_CONNECTION>>~/.profile
+	fi
+
+	# Configure airflow with s3 log directory.
+	if [ -v S3_LOG_DIRECTORY ]; then
+    	echo "setting s3 log directory ..."
+    	echo "Setting AIRFLOW__CORE__S3_LOG_FOLDER=${S3_LOG_DIRECTORY}"
+    	export AIRFLOW__CORE__S3_LOG_FOLDER=$S3_LOG_DIRECTORY
+    	echo "export AIRFLOW__CORE__S3_LOG_FOLDER="$S3_LOG_DIRECTORY>>~/.bashrc
+        echo "AIRFLOW__CORE__S3_LOG_FOLDER="$S3_LOG_DIRECTORY>>~/.profile
+
+        S3_TASK='s3.task'
+        AIRFLOW__CORE__TASK_LOG_READER=$S3_TASK
+        export AIRFLOW__CORE__S3_LOG_FOLDER=$S3_TASK
+        echo "export AIRFLOW__CORE__TASK_LOG_READER="$S3_TASK>>~/.bashrc
+        echo "AIRFLOW__CORE__TASK_LOG_READER="$S3_TASK>>~/.profile
+
+        S3_LOGGING_CLASS='airflow.config_templates.s3_logger.LOGGING_CONFIG'
+        AIRFLOW__CORE__LOGGING_CONFIG_CLASS=$S3_LOGGING_CLASS
+        export AIRFLOW__CORE__LOGGING_CONFIG_CLASS=$S3_TASK
+        echo "export AIRFLOW__CORE__LOGGING_CONFIG_CLASS="$S3_TASK>>~/.bashrc
+        echo "AIRFLOW__CORE__LOGGING_CONFIG_CLASS="$S3_TASK>>~/.profile
 	fi
 
 	# Configure airflow with redis string for celery executor.
@@ -129,6 +173,6 @@ elif [ "$#" -eq 3 ] && [ "$1" = "worker" ]; then
 # arguments is not in order
 else
   echo "Please provide required arguments as per below information."
-  echo "For starting server arguments are::  1): 'server' & 2): mysql connection string e.g (mysql://airflow:airflow@localhost:3306/airflow)"
-  echo "For starting worker arguments are::  1): 'worker' , 2): mysql connection string e.g (mysql://airflow:airflow@localhost:3306/airflow) & 3): redis connection string e.g (redis://localhost:6379/0)"
+  echo "For starting server arguments are::  1): 'server' & 2): mysql connection string e.g (mysql://airflow:airflow@localhost:3306/airflow) 3): s3 log directory path"
+  echo "For starting worker arguments are::  1): 'worker' , 2): mysql connection string e.g (mysql://airflow:airflow@localhost:3306/airflow) & 3): redis connection string e.g (redis://localhost:6379/0) 4): s3 log directory path"
 fi

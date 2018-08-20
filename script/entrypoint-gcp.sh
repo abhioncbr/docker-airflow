@@ -3,6 +3,13 @@
 AIRFLOW_HOME="/usr/local/airflow"
 CMD="airflow"
 
+google client platform authentication
+echo "setting up google cloud platform ..."
+gcloud auth activate-service-account <gcp-service-account-user> --key-file=/usr/local/airflow/.gcp/gcp-credentials.json--project=<project-name>
+
+# exporting google application credentials.
+export GOOGLE_APPLICATION_CREDENTIALS=/usr/local/airflow/.gcp/gcp-credentials.json
+
 # Starting airflow server.
 # Steps are : initialising airflow database, starting redis server, starting airflow scheduler, starting airflow webserver
 if [ "$#" -eq 2 ] && [ "$1" = "server" ]; then

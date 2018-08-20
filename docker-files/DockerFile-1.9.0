@@ -3,21 +3,21 @@
 # DESCRIPTION: Docker airflow container
 # BUILD: docker build --rm -t docker-airflow:latest DockerFile1.9.0
 
-FROM airflow-base1.9.0
+FROM abhioncbr/airflow-base1.9.0
 MAINTAINER Abhishek Sharma <abhioncbr@yahoo.com>
 
 USER root
 
 RUN pip install --ignore-installed six \
 	&& apt-get update -yqq && apt-get install -yqq mysql-client \
-	&& apt-get -o Dpkg::Options::="--force-confmiss" install --reinstall netbase
+	&& apt-get -o Dpkg::Options::="--force-confmiss" install --reinstall netbase \
+	&& pip install google-auth-httplib2
 
 RUN curl https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz > /tmp/google-cloud-sdk.tar.gz
 RUN mkdir -p /usr/local/gcloud
 RUN tar -C /usr/local/gcloud -xvf /tmp/google-cloud-sdk.tar.gz
 RUN /usr/local/gcloud/google-cloud-sdk/install.sh
-RUN pip install --upgrade google-api-python-client && pip install google-cloud-storage && pip install boto3 && pip install google-auth-httplib2
-
+RUN pip install --upgrade google-api-python-client && pip install google-cloud-storage && pip install boto3
 RUN groupadd -g 5006 airflow \
     && useradd -ms /bin/bash -d ${AIRFLOW_HOME}  -u 5004 -g 5006 -p airflow airflow
 
@@ -27,10 +27,9 @@ RUN mkdir /code-artifacts /data /home/airflow ${AIRFLOW_HOME}/startup_log ${AIRF
     && chown -R airflow:airflow ${AIRFLOW_HOME}/* /data /code-artifacts /user/airflow /home/airflow
 
 ADD script/entrypoint.sh ${AIRFLOW_HOME}/entrypoint.sh
-
-#ADD config/credentials ${AIRFLOW_HOME}/.aws/credentials
-#ADD config/gcp-credentials.json ${AIRFLOW_HOME}/.gcp/gcp-credentials.json
-
+ADD script/entrypoint.sh ${AIRFLOW_HOME}/entrypoint-s3.sh
+ADD script/entrypoint.sh ${AIRFLOW_HOME}/entrypoint-gcp.sh
+ADD script/entrypoint.sh ${AIRFLOW_HOME}/entrypoint-gcp-s3.sh
 ADD config/airflow.cfg ${AIRFLOW_HOME}/airflow.cfg
 ADD config/user_add.py ${AIRFLOW_HOME}/user_add.py
 ADD config/execute_continous_scheduler.sh ${AIRFLOW_HOME}/execute_continous_scheduler.sh
@@ -60,7 +59,7 @@ VOLUME ${AIRFLOW_HOME}/logs
 USER airflow
 
 ENV PATH=$PATH::/usr/local/gcloud/google-cloud-sdk/bin/
-
+ENV PYTHONPATH=${PYTHONPATH}:/usr/local/lib/python2.7/dist-packages/
 #ENV HDP_VERSION=2.6.1.0-129
 #export HDP_VERSION=${HDP_VERSION}
 #export HADOOP_CONF_DIR=/etc/hadoop/${HDP_VERSION}/0

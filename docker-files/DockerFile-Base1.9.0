@@ -15,6 +15,7 @@ ARG AIRFLOW_VERSION=1.9.0
 ENV AIRFLOW_HOME /usr/local/airflow
 ENV REDIS_HOME /usr/local/redis
 ENV REDIS_DOWNLOAD_URL http://download.redis.io/releases/redis-3.2.5.tar.gz
+ENV TORNADO_DOWNLOAD_URL https://files.pythonhosted.org/packages/fa/14/52e2072197dd0e63589e875ebf5984c91a027121262aa08f71a49b958359/tornado-4.5.2.tar.gz
 ENV REDIS_DOWNLOAD_SHA1 6f6333db6111badaa74519d743589ac4635eba7a
 
 # Define en_US.
@@ -68,9 +69,13 @@ RUN set -ex \
     && pip install celery \
     && pip install redis \
     && pip install hdfs3
-    
+
 RUN python -m pip install --upgrade pip setuptools wheel \
-    && pip install apache-airflow[celery,mysql,hive,hdfs,jdbc,password,async,ldap,slack,redis,s3,gcp_api,druid]==$AIRFLOW_VERSION \
+    && wget -O tornado-4.5.2.tar.gz ${TORNADO_DOWNLOAD_URL} \
+    && tar -xzf tornado-4.5.2.tar.gz -C /tmp/ \
+    && cd /tmp/tornado-4.5.2 && python /tmp/tornado-4.5.2/setup.py install \
+    && cd - && rm tornado-4.5.2.tar.gz && rm -rf /tmp/tornado-4.5.2 \
+    && pip install apache-airflow[celery,mysql,hive,hdfs,jdbc,password,async,ldap,slack,redis,s3,gcp_api,druid,devel,devel_hadoop]==$AIRFLOW_VERSION \
     && apt-get remove --purge -yqq $buildDeps libpq-dev \
     && apt-get clean \
     && rm -rf \
@@ -82,4 +87,4 @@ RUN python -m pip install --upgrade pip setuptools wheel \
         /usr/share/doc-base
 
 # Set python path so airflow can find pip installed packages.
-ENV PYTHONPATH=${PYTHONPATH}:/usr/local/lib/python2.7/dist-packages/
+ENV PYTHONPATH=${PYTHONPATH}:/usr/lib/python2.7/site-packages/
