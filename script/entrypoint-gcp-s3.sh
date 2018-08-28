@@ -174,7 +174,7 @@ elif [ "$#" -eq 4 ] && [ "$1" = "worker" ]; then
 	esac
 
 	echo "starting airflow worker"
-	QUEUE="pipelines,$(hostname)"
+	QUEUE="default,$(hostname)"
 	exec $CMD worker -q ${QUEUE} > $AIRFLOW_HOME/startup_log/airflow-worker.log 2>&1
 
 # arguments is not in order
