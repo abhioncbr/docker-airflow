@@ -51,12 +51,16 @@ if [ "$#" -eq 2 ] && [ "$1" = "server" ]; then
 		echo "airflow initdb command is not successful. Exiting."
 		exit 1
 	fi
+	sleep 2
+    echo "Done with airfow db"
 
 	#executing python script for adding user in-case if user is not present
-	#echo "executing user_add python script for adding user, if not present"
-	echo "Running user_add python script in-case `airflow` user is not present. Password is: `airflow`"
+	echo "Running user_add python script in-case 'airflow' user is not present. Password is: 'airflow'"
+	sleep 1
 	python user_add.py
-	echo "Running ab_user_add python script in-case `airflow` rbac_user is not present. Password is: `airflow`"
+
+	echo "Running ab_user_add python script in-case 'airflow' rbac_user is not present. Password is: 'airflow'"
+	sleep 1
     python ab_user_add.py
 
 	# Starting airflow scheduler and writing scheduler log in file 'startup_log/airflow-scheduler.log'.
