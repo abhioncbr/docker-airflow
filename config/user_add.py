@@ -9,7 +9,7 @@ isUserPresent = not session.query(exists().where(models.User.username=='airflow'
 if(isUserPresent):
 	user = PasswordUser(models.User())
 	user.username = 'airflow'
-	user.email = 'airflow@xyz.com'
+	user.email = 'airflow@fab_airflow.com'
 	user.superuser = True
 	user._password = generate_password_hash('airflow', 12)
 	session.add(user)
