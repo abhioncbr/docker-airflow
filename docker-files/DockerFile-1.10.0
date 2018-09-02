@@ -32,6 +32,7 @@ ADD script/entrypoint.sh ${AIRFLOW_HOME}/entrypoint-gcp.sh
 ADD script/entrypoint.sh ${AIRFLOW_HOME}/entrypoint-gcp-s3.sh
 ADD config/airflow.cfg ${AIRFLOW_HOME}/airflow.cfg
 ADD config/user_add.py ${AIRFLOW_HOME}/user_add.py
+ADD config/user_add.py ${AIRFLOW_HOME}/ab_user_add.py
 ADD config/execute_continous_scheduler.sh ${AIRFLOW_HOME}/execute_continous_scheduler.sh
 
 # airflow patch files present in airflowPatch folder
