@@ -53,8 +53,10 @@ RUN chown root:staff /usr/local/lib/python2.7/dist-packages/airflow/config_templ
 
 RUN chown -R airflow:airflow ${AIRFLOW_HOME}/*
 VOLUME /usr/hdp
-VOLUME /user/airflow
 VOLUME /code-artifacts
+VOLUME ${AIRFLOW_HOME}/.gcp
+VOLUME ${AIRFLOW_HOME}/.aws
+VOLUME ${AIRFLOW_HOME}/dags
 VOLUME ${AIRFLOW_HOME}/logs
 
 USER airflow

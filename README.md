@@ -6,7 +6,7 @@ This is a repository for building [Docker](https://www.docker.com/) container of
 * Similarly, for Docker follow [curated list of resources](https://github.com/veggiemonk/awesome-docker).
 
 ## Airflow components stack
-- Airflow version: Notation for representing version ``XX.YY.ZZ` which means either [1.10.0] or [1.9.0]
+- Airflow version: Notation for representing version `XX.YY.ZZ` which means either [1.10.0] or [1.9.0]
 - Execution Mode: `standalone`(simple container for exploration purpose ) or `cluster` (for production or long run use-cases, container runs as either `server` or `worker` )
 - Backend database: standalone- sqlite, cluster- Mysql
 - Scheduler: standalone- Sequential, cluster- Celery
@@ -33,7 +33,7 @@ This is a repository for building [Docker](https://www.docker.com/) container of
 * Base image(DockerFile-BaseXX.YY.ZZ) - file for building base image which consist of packages of airflow, java, redis and other basic components.
 * Working image(DockerFile-XX.YY.ZZ) - Depend on the base image. Build image with patches of airflow, creating user, installing gcp packages and setting up the working environment.
 * Airflow scheduler needs a restart after sometime for properly scheduling of the task. Shell script for restarting scheduler is present in folder `config`
-* Airflow container by default is configured for writing logs on AWS S3. AWS credentials needs to be updated in `credentials` file in folder `config`.
+* Airflow container by default is configured for writing logs on local filesystem but can be configured for writing on AWS S3. AWS credentials needs to be updated in `credentials` file in folder `config`.
 
 ## How to build images
 * for base image - There are two options
