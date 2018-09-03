@@ -37,9 +37,19 @@ This is a repository for building [Docker](https://www.docker.com/) container of
 
 ## How to build images
 * for base image - There are two options
-  * build image, if you want to do some customization - `docker build -t airflow-baseXX.YY.ZZ:latest --file=~/docker-airflow/DockerFile-BaseXX.YY.ZZ . --rm`
-  * download image - `docker pull abhioncbr/airflow-baseXX.YY.ZZ` and tag image as `airflow-baseXX.YY.ZZ`
-* for working image -`docker build -t airflow-XX.YY.ZZ:latest --file=~/docker-airflow/DockerFileXX.YY.ZZ . --rm`
+  * build image, if you want to do some customization - 
+    ```shell 
+       docker build -t airflow-baseXX.YY.ZZ:latest --file=~/docker-airflow/DockerFile-BaseXX.YY.ZZ . --rm
+    ```
+  * download image - 
+    ```shell
+       docker pull abhioncbr/airflow-baseXX.YY.ZZ` and tag image as `airflow-baseXX.YY.ZZ
+    ```
+    
+* for working image -
+    ```shell
+       docker build -t airflow-XX.YY.ZZ:latest --file=~/docker-airflow/DockerFileXX.YY.ZZ . --rm
+    ```
 
 ## How to run
 * General commands -
@@ -51,15 +61,13 @@ This is a repository for building [Docker](https://www.docker.com/) container of
     * Starting airflow image as a `airflow-server` container in a cluster mode-
         ```shell
         docker run --net=host -p 2222:2222 -p 6379:6379 --name=airflow-server \
-        abhioncbr/airflow-XX.YY.ZZ \
-        cluster server mysql://user:password@host:3306/db-name &
+        abhioncbr/airflow-XX.YY.ZZ cluster server mysql://user:password@host:3306/db-name &
         ```
 
     * Starting airflow image as a `airflow-worker` container in a cluster mode-
         ```shell
         docker run --net=host -p 5555:5555 -p 8739:8739 --name=airflow-worker \
-        abhioncbr/airflow-XX.YY.ZZ \
-        cluster worker mysql://user:password@host:3306/db-name redis://<airflow-server-host>:6379/0 &
+        abhioncbr/airflow-XX.YY.ZZ cluster worker mysql://user:password@host:3306/db-name redis://<airflow-server-host>:6379/0 &
         ```
 
 * In Mac using [docker for mac](https://docs.docker.com/docker-for-mac/install/) -
