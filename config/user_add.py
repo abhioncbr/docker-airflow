@@ -1,4 +1,3 @@
-import airflow
 from airflow import models, settings
 from airflow.contrib.auth.backends.password_auth import PasswordUser
 from flask_bcrypt import generate_password_hash

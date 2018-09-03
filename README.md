@@ -6,11 +6,12 @@ This is a repository for building [Docker](https://www.docker.com/) container of
 * Similarly, for Docker follow [curated list of resources](https://github.com/veggiemonk/awesome-docker).
 
 ## Airflow components stack
-- Airflow version: 1.9.0
-- Backend database: Mysql
-- Scheduler: Celery
-- Task queue: Redis
-- Log location: local file system or AWS S3
+- Airflow version: Notation for representing version ``XX.YY.ZZ` which means either [1.10.0] or [1.9.0]
+- Execution Mode: `standalone`(simple container for exploration purpose ) or `cluster` (for production or long run use-cases, container runs as either `server` or `worker` )
+- Backend database: standalone- sqlite, cluster- Mysql
+- Scheduler: standalone- Sequential, cluster- Celery
+- Task queue: cluster- Redis
+- Log location: local file system (Default) or AWS S3 (through `entrypoint-s3.sh`)
 - User authentication: Password based & support for multiple users with `superuser` privilege.
 - Docker base image: debian
 - Code enhancement: password based multiple users supporting super-user(can see all dags of all owner) feature. Currently, Airflow is working on the password based multi user feature.
@@ -29,46 +30,58 @@ This is a repository for building [Docker](https://www.docker.com/) container of
 
 ## General information about airflow docker image
 * There are two docker files in the folder `docker-files`.
-* Base image(DockerFile-Base1.9.0) - file for building base image which consist of packages of airflow, java, redis and other basic components.
-* Working image(DockerFile-1.9.0) - Depend on the base image. Build image with patches of airflow, creating user, installing gcp packages and setting up the working environment.
+* Base image(DockerFile-BaseXX.YY.ZZ) - file for building base image which consist of packages of airflow, java, redis and other basic components.
+* Working image(DockerFile-XX.YY.ZZ) - Depend on the base image. Build image with patches of airflow, creating user, installing gcp packages and setting up the working environment.
 * Airflow scheduler needs a restart after sometime for properly scheduling of the task. Shell script for restarting scheduler is present in folder `config`
 * Airflow container by default is configured for writing logs on AWS S3. AWS credentials needs to be updated in `credentials` file in folder `config`.
 
 ## How to build images
 * for base image - There are two options
-  * build image, if you want to do some customization - `docker build -t airflow-base1.9.0:latest --file=~/docker-airflow/DockerFile-Base1.9.0 . --rm`
-  * download image - `docker pull abhioncbr/airflow-base1.9.0` and tag image as `airflow-base1.9.0`
-* for working image -`docker build -t airflow-1.9.0:latest --file=~/docker-airflow/DockerFile1.9.0 . --rm`
+  * build image, if you want to do some customization - `docker build -t airflow-baseXX.YY.ZZ:latest --file=~/docker-airflow/DockerFile-BaseXX.YY.ZZ . --rm`
+  * download image - `docker pull abhioncbr/airflow-baseXX.YY.ZZ` and tag image as `airflow-baseXX.YY.ZZ`
+* for working image -`docker build -t airflow-XX.YY.ZZ:latest --file=~/docker-airflow/DockerFileXX.YY.ZZ . --rm`
 
 ## How to run
 * General commands -
-    * starting airflow image as a `airflow-server` service container -
+    * starting airflow image as a `airflow-standalone` container in a standalone mode-
+    `docker run --net=host -p 2222:2222 --name=airflow-standalone abhioncbr/airflow-XX.YY.ZZ standalone &`
+    
+    * Starting airflow image as a `airflow-server` container in a cluster mode-
     `docker run --net=host -p 2222:2222 -p 6379:6379 --name=airflow-server
-    abhioncbr/airflow-1.9.0
-    server mysql://user:password@host:3306/db-name &`
+    abhioncbr/airflow-XX.YY.ZZ
+    cluster server mysql://user:password@host:3306/db-name &`
 
-    * starting airflow image as a service container -
+    * Starting airflow image as a `airflow-worker` container in a cluster mode-
     `docker run --net=host -p 5555:5555 -p 8739:8739 --name=airflow-worker
-    abhioncbr/airflow-1.9.0
-    worker mysql://user:password@host:3306/db-name redis://<airflow-server-host>:6379/0 &`
+    abhioncbr/airflow-XX.YY.ZZ
+    cluster worker mysql://user:password@host:3306/db-name redis://<airflow-server-host>:6379/0 &`
 
 * In Mac using [docker for mac](https://docs.docker.com/docker-for-mac/install/) -
-    * starting airflow image as a service container & mounting dags, code-artifacts & logs folder to host machine -
-    `docker run -p 2222:2222 -p 6379:6379 --name=airflow-server
-     -v ~/airflow-data/code-artifacts:/code-artifacts 
-     -v ~/airflow-data/logs:/usr/local/airflow/logs 
-     -v ~/airflow-data/dags:/usr/local/airflow/dags 
-     abhioncbr/airflow-1.9.0 
-     server mysql://user:password@host.docker.internal:3306:3306/<airflow-db-name> &`  
+    * Standalone Mode - starting airflow image in a standalone mode & mounting dags, code-artifacts & logs folder to host machine -
+        `docker run -p 2222:2222 --name=airflow-standalone
+        -v ~/airflow-data/code-artifacts:/code-artifacts 
+        -v ~/airflow-data/logs:/usr/local/airflow/logs 
+        -v ~/airflow-data/dags:/usr/local/airflow/dags 
+        abhioncbr/airflow-XX.YY.ZZ
+        standalone &`     
+    
+    * Cluster Mode
+        * starting airflow image as a server container & mounting dags, code-artifacts & logs folder to host machine -
+        `docker run -p 2222:2222 -p 6379:6379 --name=airflow-server
+        -v ~/airflow-data/code-artifacts:/code-artifacts 
+        -v ~/airflow-data/logs:/usr/local/airflow/logs 
+        -v ~/airflow-data/dags:/usr/local/airflow/dags 
+        abhioncbr/airflow-XX.YY.ZZ
+        cluster server mysql://user:password@host.docker.internal:3306:3306/<airflow-db-name> &`  
      
-    * starting airflow image as a service container & mounting dags, code-artifacts & logs folder to host machine - 
-    `docker run -p 5555:5555 -p 8739:8739 --name=airflow-worker
-     -v ~/airflow-data/code-artifacts:/code-artifacts 
-     -v ~/airflow-data/logs:/usr/local/airflow/logs 
-     -v ~/airflow-data/dags:/usr/local/airflow/dags 
-     abhioncbr/airflow-1.9.0 
-     worker mysql://user:password@host.docker.internal:3306:3306/<airflow-db-name> redis://host.docker.internal:6379/0 &` 
+        * starting airflow image as a worker container & mounting dags, code-artifacts & logs folder to host machine - 
+        `docker run -p 5555:5555 -p 8739:8739 --name=airflow-worker
+        -v ~/airflow-data/code-artifacts:/code-artifacts 
+        -v ~/airflow-data/logs:/usr/local/airflow/logs 
+        -v ~/airflow-data/dags:/usr/local/airflow/dags 
+        abhioncbr/airflow-XX.YY.ZZ
+        cluster worker mysql://user:password@host.docker.internal:3306:3306/<airflow-db-name> redis://host.docker.internal:6379/0 &` 
      
 ## Setting up Google Cloud Platform environment
 * Update gcp-credentials.json file with Google credentials.
-* In `entrypoint.sh` file uncomment commands related to setting up google cloud platform.
+* In `entrypoint.sh` file uncomment commands related to setting up google cloud platform. [Update Required]

@@ -1,4 +1,3 @@
-import airflow
 from airflow.www_rbac.app import cached_appbuilder
 
 username='airflow'
