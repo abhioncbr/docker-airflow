@@ -3,6 +3,8 @@
 AIRFLOW_HOME="/usr/local/airflow"
 CMD="airflow"
 
+# Starting airflow container in standalone mode.
+# Steps are : initialising airflow database, starting airflow scheduler & airflow webserver.
 if [ "$#" -eq 1 ] && [ "$1" = "standalone" ]; then
 
 	# Initialising airflow database.
