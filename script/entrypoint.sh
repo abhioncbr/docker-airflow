@@ -3,15 +3,245 @@
 AIRFLOW_HOME="/usr/local/airflow"
 CMD="airflow"
 
+help(){
+  echo
+  echo "###########################################################################################################################################################################"
+  echo "##***************************************************** Please provide required arguments as per below information. *****************************************************##"
+  echo "##                                                                                                                                                                       ##"
+  echo "##************************************************************************* Required arguments- *************************************************************************##"
+  echo "## 1) '-m' or '--mode', should be either 'standalone' or 'cluster' for eg, -m|--mode=standalone or -m|--mode=cluster                                                     ##"
+  echo "## If mode is 'cluster' than 2)'-t' or '--node_type', should be either 'server' or 'worker' for eg, -t|--node_type=server or -t|--node_type=worker                       ##"
+  echo "## If mode is 'cluster' than 3)'-d' or '--mysql_url' for eg, -d|--mysql_url=mysql://user:pswrd@db_host:port/db_name                                                      ##"
+  echo "## If mode is 'cluster' & node_type is 'worker' than 4)'-r' or '--redis_url', should be server node host url, for eg, -r|--redis_url=redis://server_container_ip:6379/0  ##"
+  echo "##                                                                                                                                                                       ##"
+  echo "##************************************************************************* Optional arguments- *************************************************************************##"
+  echo "## For S3 as dags log directory, '-s' or '--s3_path'. for eg, -s|--s3_path=s3://bucket-name/directory                                                                    ##"
+  echo "## For RBAC based authorization, '-a' or '--rbac_auth'. Should be either 'true' or 'false. 'for eg, -a|--rbac_auth=true. Default username- 'airflow', pswrd- 'airflow'   ##"
+  echo "## For Google Cloud platform, 1) '-p' or '--gcp_project', name of google project & 2) '-u' or '--gcp_service_user', google service account user                          ##"
+  echo "###########################################################################################################################################################################"
+  echo
+}
+
+print(){
+  echo
+  echo "###########################################################################################################################################################################"
+  echo MODE = "${MODE}"
+  print_node_type
+  print_mysql_url
+  print_redis_url
+  echo RBAC_AUTH = "${RBAC_AUTH}"
+  echo S3_PATH = "${S3_PATH}"
+  echo GCP_PROJECT = "${GCP_PROJECT}"
+  echo GCP_USER_NAME = "${GCP_USER_NAME}"
+  echo "###########################################################################################################################################################################"
+  echo
+}
+
+# https://stackoverflow.com/questions/192249/how-do-i-parse-command-line-arguments-in-bash
+parse_args(){
+for i in "$@"
+do
+case $i in
+    -m=*|--mode=*)
+    MODE="${i#*=}"
+    shift # past argument=value
+    ;;
+    -t=*|--node_type=*)
+    NODE_TYPE="${i#*=}"
+    shift # past argument=value
+    ;;
+    -d=*|--mysql_url=*)
+    MYSQL_URL="${i#*=}"
+    shift # past argument=value
+    ;;
+    -r=*|--redis_url=*)
+    REDIS_URL="${i#*=}"
+    shift # past argument=value
+    ;;
+    -a=*|--rbac_auth=*)
+    RBAC_AUTH="${i#*=}"
+    shift # past argument=value
+    ;;
+    -s=*|--s3_path=*)
+    S3_PATH="${i#*=}"
+    shift # past argument=value
+    ;;
+    -p=*|--gcp_project=*)
+    GCP_PROJECT="${i#*=}"
+    shift # past argument=value
+    ;;
+    -u=*|--gcp_service_user=*)
+    GCP_USER_NAME="${i#*=}"
+    shift # past argument=value
+    ;;
+    *)
+    echo "Unknown option: '${i}'"
+    help
+    exit -1
+    ;;
+esac
+done
+}
+
+print_mysql_url(){
+       if [ -v MYSQL_URL ] && [ "$MODE" = "standalone" ]; then
+       temp="  [Ignoring, since 'mode' is 'standalone']"
+       fi
+       echo "MYSQL_URL = ${MYSQL_URL} $temp"
+}
+
+print_node_type(){
+       if [ -v NODE_TYPE ] &&  [ "$MODE" = "standalone" ]; then
+       temp="  [Ignoring, since 'mode' is 'standalone']"
+       fi
+       echo "NODE_TYPE = ${NODE_TYPE} $temp"
+}
+
+print_redis_url(){
+       if [ -v REDIS_URL ] && [ "$MODE" = "standalone" ]; then
+       temp="[Ignoring, since 'mode' is 'standalone']"
+       elif [ -v REDIS_URL ] && [ "$NODE_TYPE" = "server" ]; then
+       temp="[Ignoring, since 'node_type' is 'server']"
+       fi
+       echo "REDIS_URL = ${REDIS_URL}  $temp"
+}
+
+validate_args(){
+    if [ "$MODE" != "cluster" ] && [ "$MODE" != "standalone" ]; then
+        echo "Unknown Mode: '${MODE}'"
+        help
+        exit -1
+    elif ([ "$MODE" = "cluster" ] && [ "$NODE_TYPE" != "server" ] && [ "$NODE_TYPE" != "worker" ]); then
+        echo "Unknown node_type: '${NODE_TYPE}'"
+        help
+        exit -1
+    elif ([ "$MODE" = "cluster" ] && [[ "$MYSQL_URL" != mysql://* ]]); then
+        echo "Unknown mysql_url: '${MYSQL_URL}'"
+        help
+        exit -1
+    elif ([ "$MODE" = "cluster" ] && [ "$NODE_TYPE" = "worker" ] && [[ "$REDIS_URL" != redis://* ]]); then
+        echo "Unknown REDIS_URL: '${REDIS_URL}'"
+        help
+        exit -1
+    elif [ -v RBAC_AUTH ] && [ "$RBAC_AUTH" != "true" ] && [ "$RBAC_AUTH" != "false" ]; then
+        echo "Unknown RBAC_AUTH: '${RBAC_AUTH}'"
+        help
+        exit -1
+    else
+        print
+    fi
+}
+
+set_airflow_s3_params(){
+    echo "setting s3 log directory ..."
+    echo "Setting AIRFLOW__CORE__S3_LOG_FOLDER=${S3_PATH}"
+    export AIRFLOW__CORE__S3_LOG_FOLDER=$S3_PATH
+    echo "export AIRFLOW__CORE__S3_LOG_FOLDER="$S3_PATH>>~/.bashrc
+    echo "AIRFLOW__CORE__S3_LOG_FOLDER="$S3_PATH>>~/.profile
+
+    S3_LOGGING_CLASS='airflow.config_templates.s3_logger.LOGGING_CONFIG'
+    AIRFLOW__CORE__LOGGING_CONFIG_CLASS=$S3_LOGGING_CLASS
+    export AIRFLOW__CORE__LOGGING_CONFIG_CLASS=$S3_TASK
+    echo "export AIRFLOW__CORE__LOGGING_CONFIG_CLASS="$S3_TASK>>~/.bashrc
+    echo "AIRFLOW__CORE__LOGGING_CONFIG_CLASS="$S3_TASK>>~/.profile
+
+    S3_TASK='s3.task'
+    AIRFLOW__CORE__TASK_LOG_READER=$S3_TASK
+    export AIRFLOW__CORE__S3_LOG_FOLDER=$S3_TASK
+    echo "export AIRFLOW__CORE__TASK_LOG_READER="$S3_TASK>>~/.bashrc
+    echo "AIRFLOW__CORE__TASK_LOG_READER="$S3_TASK>>~/.profile
+}
+
+set_gcp_params(){
+    #google client platform authentication
+    echo "setting up google cloud platform ..."
+    gcloud auth activate-service-account ${GCP_USER_NAME} --key-file=/usr/local/airflow/.gcp/gcp-credentials.json --project=${GCP_PROJECT}
+    # exporting google application credentials.
+    export GOOGLE_APPLICATION_CREDENTIALS=/usr/local/airflow/.gcp/gcp-credentials.json
+    echo "export GOOGLE_APPLICATION_CREDENTIALS=/usr/local/airflow/.gcp/gcp-credentials.json">>~/.bashrc
+    echo "GOOGLE_APPLICATION_CREDENTIALS=/usr/local/airflow/.gcp/gcp-credentials.json">>~/.profile
+}
+
+set_celery_executor(){
+	echo "setting 'Celery' as scheduler type..."
+    echo "Setting AIRFLOW__CORE__EXECUTOR=CeleryExecutor"
+    export AIRFLOW__CORE__EXECUTOR=CeleryExecutor
+    echo "export AIRFLOW__CORE__EXECUTOR=CeleryExecutor">>~/.bashrc
+    echo "AIRFLOW__CORE__EXECUTOR=CeleryExecutor">>~/.profile
+}
+
+set_mysql(){
+	# Configure airflow with mysql connection string.
+
+    echo "setting mysql database connection string ..."
+    echo "Setting AIRFLOW__CORE__SQL_ALCHEMY_CONN=${MYSQL_URL}"
+    export AIRFLOW__CORE__SQL_ALCHEMY_CONN=$MYSQL_URL
+
+    echo "export AIRFLOW__CORE__SQL_ALCHEMY_CONN="$MYSQL_URL>>~/.bashrc
+    echo "AIRFLOW__CORE__SQL_ALCHEMY_CONN="$MYSQL_URL>>~/.profile
+}
+
+set_celery_redis(){
+	echo "Setting AIRFLOW__CELERY__BROKER_URL=${REDIS_URL}"
+    export AIRFLOW__CELERY__BROKER_URL=$REDIS_URL
+    echo "Setting AIRFLOW__CELERY__CELERY_RESULT_BACKEND=${REDIS_URL}"
+    export AIRFLOW__CELERY__CELERY_RESULT_BACKEND=$REDIS_URL
+
+    echo "export AIRFLOW__CELERY__BROKER_URL="$REDIS_URL>>~/.bashrc
+    echo "AIRFLOW__CELERY__BROKER_URL="$REDIS_URL>>~/.profile
+	echo "export AIRFLOW__CELERY__CELERY_RESULT_BACKEND="$REDIS_URL>>~/.bashrc
+    echo "AIRFLOW__CELERY__CELERY_RESULT_BACKEND="$REDIS_URL>>~/.profile
+}
+
+#only support password based or rbac based
+set_web_authentication(){
+    if [ "$RBAC_AUTH" = "true" ]; then
+        echo "setting 'rbac web-authentication' of airflow webserver..."
+        echo "Setting AIRFLOW__WEBSERVER__RBAC=True"
+        export AIRFLOW__WEBSERVER__RBAC=True
+        echo "export AIRFLOW__WEBSERVER__RBAC=True">>~/.bashrc
+        echo "AIRFLOW__WEBSERVER__RBAC=True">>~/.profile
+    fi
+    echo "setting 'web-authentication' of airflow webserver..."
+    echo "Setting AIRFLOW__WEBSERVER__AUTHENTICATE=True"
+    export AIRFLOW__WEBSERVER__AUTHENTICATE=True
+    echo "export AIRFLOW__WEBSERVER__AUTHENTICATE=True">>~/.bashrc
+    echo "AIRFLOW__WEBSERVER__AUTHENTICATE=True">>~/.profile
+}
+
+set_optional_param(){
+    set_web_authentication
+    if [ -v S3_PATH ]; then
+      set_airflow_s3_params
+    fi
+
+    if [ -v GCP_PROJECT ] && [ -v GCP_USER_NAME ]; then
+      set_gcp_params
+    fi
+}
+
+parse_args "$@"
+validate_args
+
 # Starting airflow container in standalone mode.
 # Steps are : initialising airflow database, starting airflow scheduler & airflow webserver.
-if [ "$#" -eq 1 ] && [ "$1" = "standalone" ]; then
+if [ "$MODE" = "standalone" ]; then
+    set_optional_param
 
 	# Initialising airflow database.
     echo "initialising airfow db"
 	$CMD initdb
 	sleep 2
     echo "Done with airfow db"
+
+    #executing python script for adding user in-case if user is not present
+    echo "Running user_add python script in-case 'airflow' user is not present. Password is: 'airflow'"
+    sleep 1
+    python user_add.py
+
+    echo "Running ab_user_add python script in-case 'airflow' rbac_user is not present. Password is: 'airflow'"
+    sleep 1
+    python ab_user_add.py
 
 	# Starting airflow scheduler and writing scheduler log in file 'startup_log/airflow-scheduler.log'.
 	echo starting airflow scheduler
@@ -31,31 +261,10 @@ if [ "$#" -eq 1 ] && [ "$1" = "standalone" ]; then
 
 # Starting airflow server.
 # Steps are : initialising airflow database, starting redis server, starting airflow scheduler, starting airflow webserver
-elif [ "$#" -eq 3 ] && [ "$1" = "cluster" ] && [ "$2" = "server" ]; then
-	# setting up the arguments.
-	MYSQL_CONNECTION=$3
-
-	echo "setting 'Celery' as scheduler type..."
-    echo "Setting AIRFLOW__CORE__EXECUTOR=CeleryExecutor"
-    export AIRFLOW__CORE__EXECUTOR=CeleryExecutor
-    echo "export AIRFLOW__CORE__EXECUTOR=CeleryExecutor">>~/.bashrc
-    echo "AIRFLOW__CORE__EXECUTOR=CeleryExecutor">>~/.profile
-
-    echo "setting 'web-authentication' of airflow webserver..."
-    echo "Setting AIRFLOW__WEBSERVER__AUTHENTICATE=True"
-    export AIRFLOW__WEBSERVER__AUTHENTICATE=True
-    echo "export AIRFLOW__WEBSERVER__AUTHENTICATE=True">>~/.bashrc
-    echo "AIRFLOW__WEBSERVER__AUTHENTICATE=True">>~/.profile
-
-	# Configure airflow with mysql connection string.
-	if [ -v MYSQL_CONNECTION ]; then
-    	echo "setting mysql database connection string ..."
-    	echo "Setting AIRFLOW__CORE__SQL_ALCHEMY_CONN=${MYSQL_CONNECTION}"
-    	export AIRFLOW__CORE__SQL_ALCHEMY_CONN=$MYSQL_CONNECTION
-
-    	echo "export AIRFLOW__CORE__SQL_ALCHEMY_CONN="$MYSQL_CONNECTION>>~/.bashrc
-        echo "AIRFLOW__CORE__SQL_ALCHEMY_CONN="$MYSQL_CONNECTION>>~/.profile
-	fi
+elif [ "$MODE" = "cluster" ] && [ "$NODE_TYPE" = "server" ]; then
+   set_mysql
+   set_celery_executor
+   set_optional_param
 
 # ============= Starting server processes =====================
 
@@ -70,16 +279,9 @@ elif [ "$#" -eq 3 ] && [ "$1" = "cluster" ] && [ "$2" = "server" ]; then
 		1)  echo "redis-server is up & running, having pid:" $!
     		;;
 	esac
-	REDIS_CONNECTION=redis://localhost:6379/0
-	echo "Setting AIRFLOW__CELERY__BROKER_URL=${REDIS_CONNECTION}"
-    export AIRFLOW__CELERY__BROKER_URL=$REDIS_CONNECTION
-    echo "Setting AIRFLOW__CELERY__CELERY_RESULT_BACKEND=${REDIS_CONNECTION}"
-    export AIRFLOW__CELERY__CELERY_RESULT_BACKEND=$REDIS_CONNECTION
 
-    echo "export AIRFLOW__CELERY__BROKER_URL="$REDIS_CONNECTION>>~/.bashrc
-    echo "AIRFLOW__CELERY__BROKER_URL="$REDIS_CONNECTION>>~/.profile
-	echo "export AIRFLOW__CELERY__CELERY_RESULT_BACKEND="$REDIS_CONNECTION>>~/.bashrc
-    echo "AIRFLOW__CELERY__CELERY_RESULT_BACKEND="$REDIS_CONNECTION>>~/.profile
+	REDIS_URL=redis://localhost:6379/0
+	set_celery_redis
 
 	# Initialising airflow database.
 	echo "initialising airfow db"
@@ -121,48 +323,11 @@ elif [ "$#" -eq 3 ] && [ "$1" = "cluster" ] && [ "$2" = "server" ]; then
 	exec -a airflow-webserver $CMD webserver > $AIRFLOW_HOME/startup_log/airflow-server.log 2>&1
 
 # Starting airflow worker.
-elif [ "$#" -eq 4 ] && [ "$1" = "cluster" ] && [ "$2" = "worker" ]; then
-	# setting up the arguments.
-	MYSQL_CONNECTION=$3
-	REDIS_CONNECTION=$4
-
-    echo "setting 'Celery' as scheduler type..."
-    echo "Setting AIRFLOW__CORE__EXECUTOR=CeleryExecutor"
-    export AIRFLOW__CORE__EXECUTOR=CeleryExecutor
-    echo "export AIRFLOW__CORE__EXECUTOR=CeleryExecutor">>~/.bashrc
-    echo "AIRFLOW__CORE__EXECUTOR=CeleryExecutor">>~/.profile
-
-    echo "setting 'web-authentication' of airflow webserver..."
-    echo "Setting AIRFLOW__WEBSERVER__AUTHENTICATE=True"
-    export AIRFLOW__WEBSERVER__AUTHENTICATE=True
-    echo "export AIRFLOW__WEBSERVER__AUTHENTICATE=True">>~/.bashrc
-    echo "AIRFLOW__WEBSERVER__AUTHENTICATE=True">>~/.profile
-
-	# Configure airflow with mysql connection string.
-	if [ -v MYSQL_CONNECTION ]; then
-    	echo "setting mysql database connection string ..."
-    	echo "Setting AIRFLOW__CORE__SQL_ALCHEMY_CONN=${MYSQL_CONNECTION}"
-    	export AIRFLOW__CORE__SQL_ALCHEMY_CONN=$MYSQL_CONNECTION
-
-    	echo "export AIRFLOW__CORE__SQL_ALCHEMY_CONN="$MYSQL_CONNECTION>>~/.bashrc
-        echo "AIRFLOW__CORE__SQL_ALCHEMY_CONN="$MYSQL_CONNECTION>>~/.profile
-	fi
-
-	# Configure airflow with redis string for celery executor.
-	if [ -v REDIS_CONNECTION ]; then
-    	echo "setting redis connection string ..."
-
-    	echo "Setting AIRFLOW__CELERY__BROKER_URL=${REDIS_CONNECTION}"
-    	export AIRFLOW__CELERY__BROKER_URL=$REDIS_CONNECTION
-
-    	echo "Setting AIRFLOW__CELERY__CELERY_RESULT_BACKEND=${REDIS_CONNECTION}"
-    	export AIRFLOW__CELERY__CELERY_RESULT_BACKEND=$REDIS_CONNECTION
-
-    	echo "export AIRFLOW__CELERY__BROKER_URL="$REDIS_CONNECTION>>~/.bashrc
-        echo "AIRFLOW__CELERY__BROKER_URL="$REDIS_CONNECTION>>~/.profile
-        echo "export AIRFLOW__CELERY__CELERY_RESULT_BACKEND="$REDIS_CONNECTION>>~/.bashrc
-        echo "AIRFLOW__CELERY__CELERY_RESULT_BACKEND="$REDIS_CONNECTION>>~/.profile
-	fi
+elif [ "$MODE" = "cluster" ] && [ "$NODE_TYPE" = "worker" ]; then
+   set_mysql
+   set_celery_executor
+   set_celery_redis
+   set_optional_param
 
 	# Starting worker processes.
 	echo "starting airflow celery flower"
@@ -182,8 +347,5 @@ elif [ "$#" -eq 4 ] && [ "$1" = "cluster" ] && [ "$2" = "worker" ]; then
 
 # arguments is not in order
 else
-  echo "== Please provide required arguments as per below information. =="
-  echo "For starting airflow-container as standalone, arguments are:: 1): 'standalone'"
-  echo "For starting airflow-container as cluster in server mode, arguments are::  1): 'cluster' 2): 'server' & 3): mysql connection string e.g (mysql://airflow:airflow@localhost:3306/airflow)"
-  echo "For starting airflow-container as cluster in worker mode, arguments are::  1): 'cluster' 2): 'worker' , 3): mysql connection string e.g (mysql://airflow:airflow@localhost:3306/airflow) & 4): redis connection string e.g (redis://localhost:6379/0)"
+help
 fi
