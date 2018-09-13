@@ -55,19 +55,19 @@ This is a repository for building [Docker](https://www.docker.com/) container of
 * General commands -
     * starting airflow image as a `airflow-standalone` container in a standalone mode-
         ```shell
-        docker run --net=host -p 2222:2222 --name=airflow-standalone abhioncbr/airflow-XX.YY.ZZ standalone &
+        docker run --net=host -p 2222:2222 --name=airflow-standalone abhioncbr/airflow-XX.YY.ZZ -m=standalone &
         ```
     
     * Starting airflow image as a `airflow-server` container in a cluster mode-
         ```shell
         docker run --net=host -p 2222:2222 -p 6379:6379 --name=airflow-server \
-        abhioncbr/airflow-XX.YY.ZZ cluster server mysql://user:password@host:3306/db-name &
+        abhioncbr/airflow-XX.YY.ZZ -m=cluster -t=server -d=mysql://user:password@host:3306/db-name &
         ```
 
     * Starting airflow image as a `airflow-worker` container in a cluster mode-
         ```shell
         docker run --net=host -p 5555:5555 -p 8739:8739 --name=airflow-worker \
-        abhioncbr/airflow-XX.YY.ZZ cluster worker mysql://user:password@host:3306/db-name redis://<airflow-server-host>:6379/0 &
+        abhioncbr/airflow-XX.YY.ZZ -m=cluster -t=worker -d=mysql://user:password@host:3306/db-name -r=redis://<airflow-server-host>:6379/0 &
         ```
 
 * In Mac using [docker for mac](https://docs.docker.com/docker-for-mac/install/) -
@@ -77,7 +77,7 @@ This is a repository for building [Docker](https://www.docker.com/) container of
         -v ~/airflow-data/code-artifacts:/code-artifacts \
         -v ~/airflow-data/logs:/usr/local/airflow/logs \
         -v ~/airflow-data/dags:/usr/local/airflow/dags \
-        abhioncbr/airflow-XX.YY.ZZ standalone &
+        abhioncbr/airflow-XX.YY.ZZ -m=standalone &
         ```     
     
     * Cluster Mode
@@ -88,7 +88,7 @@ This is a repository for building [Docker](https://www.docker.com/) container of
             -v ~/airflow-data/logs:/usr/local/airflow/logs \
             -v ~/airflow-data/dags:/usr/local/airflow/dags \
             abhioncbr/airflow-XX.YY.ZZ \
-            cluster server mysql://user:password@host.docker.internal:3306:3306/<airflow-db-name> &
+            -m=cluster -t=server -d=mysql://user:password@host.docker.internal:3306:3306/<airflow-db-name> &
             ```
      
         * starting airflow image as a worker container & mounting dags, code-artifacts & logs folder to host machine - 
@@ -98,9 +98,9 @@ This is a repository for building [Docker](https://www.docker.com/) container of
             -v ~/airflow-data/logs:/usr/local/airflow/logs \
             -v ~/airflow-data/dags:/usr/local/airflow/dags \
             abhioncbr/airflow-XX.YY.ZZ \
-            cluster worker mysql://user:password@host.docker.internal:3306:3306/<airflow-db-name> redis://host.docker.internal:6379/0 &   
+            -m=cluster -t=worker -d=mysql://user:password@host.docker.internal:3306:3306/<airflow-db-name> -r=redis://host.docker.internal:6379/0 &   
             ``` 
      
 ## Setting up Google Cloud Platform environment
-* Update gcp-credentials.json file with Google credentials.
+* Update gcp-credentials.json file with Google credentials. [Update Required]
 * In `entrypoint.sh` file uncomment commands related to setting up google cloud platform. [Update Required]
