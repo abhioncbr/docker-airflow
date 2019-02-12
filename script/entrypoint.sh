@@ -241,13 +241,13 @@ if [ "$MODE" = "standalone" ]; then
 
     echo "Running ab_user_add python script in-case 'airflow' rbac_user is not present. Password is: 'airflow'"
     sleep 1
-    python ab_user_add.py
+    #python ab_user_add.py
 
 	# Starting airflow scheduler and writing scheduler log in file 'startup_log/airflow-scheduler.log'.
 	echo starting airflow scheduler
 	exec -a airflow-scheduler $CMD scheduler > $AIRFLOW_HOME/startup_log/airflow-scheduler.log 2>&1 &
 	sleep 5
-	case "$(pidof /usr/bin/python /usr/local/bin/airflow scheduler | wc -w)" in
+	case "$(pidof /usr/local/bin/python /usr/local/bin/airflow scheduler | wc -w)" in
 		0)  echo "airflow scheduler is not started .. exiting."
     		exit 1
     		;;
@@ -300,13 +300,13 @@ elif [ "$MODE" = "cluster" ] && [ "$NODE_TYPE" = "server" ]; then
 
 	echo "Running ab_user_add python script in-case 'airflow' rbac_user is not present. Password is: 'airflow'"
 	sleep 1
-    python ab_user_add.py
+    #python ab_user_add.py
 
 	# Starting airflow scheduler and writing scheduler log in file 'startup_log/airflow-scheduler.log'.
 	echo starting airflow scheduler
 	exec -a airflow-scheduler $CMD scheduler > $AIRFLOW_HOME/startup_log/airflow-scheduler.log 2>&1 &
 	sleep 5
-	case "$(pidof /usr/bin/python /usr/local/bin/airflow scheduler | wc -w)" in
+	case "$(pidof /usr/local/bin/python/usr/local/bin/airflow scheduler | wc -w)" in
 		0)  echo "airflow scheduler is not started .. exiting."
     		exit 1
     		;;
@@ -333,7 +333,7 @@ elif [ "$MODE" = "cluster" ] && [ "$NODE_TYPE" = "worker" ]; then
 	echo "starting airflow celery flower"
     exec $CMD flower > $AIRFLOW_HOME/startup_log/airflow-celery-flower.log 2>&1 &
     sleep 5
-    case "$(pidof /usr/bin/python /usr/local/bin/flower | wc -w)" in
+    case "$(pidof /usr/local/bin/python/usr/local/bin/flower | wc -w)" in
 		0)  echo "airflow flower is not started .. exiting."
     		exit 1
     		;;
