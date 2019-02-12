@@ -23,7 +23,7 @@ jobs:
           name: Push to DockerHub
           command: |
             docker login -u $DOCKERHUB_LOGIN -p $DOCKERHUB_PASSWORD
-            docker push abhioncbr/docker-airflow:$AIRFLOW_VERSION
+            docker push abhioncbr/docker-airflow:$IMAGE_VERSION
 
 workflows:
   version: 2
