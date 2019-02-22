@@ -5,10 +5,11 @@
 FROM python:3.6
 MAINTAINER Abhishek Sharma <abhioncbr@yahoo.com>
 
+ARG PYTHON_DEPS
 ARG AIRFLOW_VERSION
 ARG AIRFLOW_DEPS="all"
 ARG BUILD_DEPS="freetds-dev libkrb5-dev libsasl2-dev libssl-dev libffi-dev libpq-dev git"
-ARG OTHER_DEPS="sshpass openssh-server openssh-client less gcc make wget vim curl rsync netcat "
+ARG OTHER_DEPS="sshpass openssh-server openssh-client less gcc make wget vim curl rsync netcat logrotate"
 ARG APT_DEPS="$BUILD_DEPS $OTHER_DEPS libsasl2-dev freetds-bin build-essential default-libmysqlclient-dev apt-utils locales "
 
 ENV AIRFLOW_HOME /usr/local/airflow
@@ -56,24 +57,29 @@ RUN mkdir /code-artifacts /data /home/airflow ${AIRFLOW_HOME}/startup_log ${AIRF
 ADD script/entrypoint.sh ${AIRFLOW_HOME}/entrypoint.sh
 ADD config/airflow.cfg ${AIRFLOW_HOME}/airflow.cfg
 ADD config/user_add.py ${AIRFLOW_HOME}/user_add.py
-ADD config/ab_user_add.py ${AIRFLOW_HOME}/ab_user_add.py
+ADD config/rbac_user_add.py ${AIRFLOW_HOME}/rbac_user_add.py
 ADD config/execute_continous_scheduler.sh ${AIRFLOW_HOME}/execute_continous_scheduler.sh
 
 # airflow patch files present in airflowPatch folder
-ADD airflowPatch1.10.0/models.py /usr/local/lib/python3.6/site-package/airflow/models.py
-RUN chown root:staff /usr/local/lib/python3.6/site-packages/airflow/models.py
+RUN mkdir /tmp/airflow_patch
+ADD airflowPatch1.10.0/views.py /tmp/airflow_patch/views.py
+ADD airflowPatch1.10.0/models.py /tmp/airflow_patch/models.py
+ADD airflowPatch1.10.0/password_auth.py /tmp/airflow_patch/password_auth.py
+ADD airflowPatch1.10.0/e3a246e0dc1_current_schema.py /tmp/airflow_patch/e3a246e0dc1_current_schema.py
+RUN if [ $AIRFLOW_VERSION \< "1.10.2" ] ; then \
+    cp /tmp/airflow_patch/models.py /usr/local/lib/python3.6/site-packages/airflow/models.py; \
+    cp /tmp/airflow_patch/views.py /usr/local/lib/python3.6/site-packages/airflow/www/views.py; \
+    cp /tmp/airflow_patch/password_auth.py /usr/local/lib/python3.6/site-packages/airflow/contrib/auth/backends/password_auth.py; \
+    cp /tmp/airflow_patch/e3a246e0dc1_current_schema.py /usr/local/lib/python3.6/site-packages/airflow/migrations/versions/e3a246e0dc1_current_schema.py; \
+    chown root:staff /usr/local/lib/python3.6/site-packages/airflow/models.py; \
+    chown root:staff /usr/local/lib/python3.6/site-packages/airflow/www/views.py; \
+    chown root:staff /usr/local/lib/python3.6/site-packages/airflow/contrib/auth/backends/password_auth.py; \
+    chown root:staff /usr/local/lib/python3.6/site-packages/airflow/migrations/versions/e3a246e0dc1_current_schema.py; \
+fi
+RUN rm -rf /tmp/airflow_patch
 
-ADD airflowPatch1.10.0/password_auth.py /usr/local/lib/python3.6/site-package/airflow/contrib/auth/backends/password_auth.py
-RUN chown root:staff /usr/local/lib/python3.6/site-packages/airflow/contrib/auth/backends/password_auth.py
-
-ADD airflowPatch1.10.0/views.py /usr/local/lib/python3.6/site-package/airflow/www/views.py
-RUN chown root:staff /usr/local/lib/python3.6/site-packages/airflow/www/views.py
-
-ADD airflowPatch1.10.0/e3a246e0dc1_current_schema.py /usr/local/lib/python3.6/site-package/airflow/migrations/versions/e3a246e0dc1_current_schema.py
-RUN chown root:staff /usr/local/lib/python3.6/site-packages/airflow/migrations/versions/e3a246e0dc1_current_schema.py
-
-ADD airflowPatch1.10.0/s3_logger.py /usr/local/lib/python3.6/site-package/airflow/config_templates/s3_logger.py
-RUN chown root:staff /usr/local/lib/python3.6/site-package/airflow/config_templates/s3_logger.py
+ADD airflowPatch1.10.0/s3_logger.py /usr/local/lib/python3.6/site-packages/airflow/config_templates/s3_logger.py
+RUN chown root:staff /usr/local/lib/python3.6/site-packages/airflow/config_templates/s3_logger.py
 
 
 RUN chown -R airflow:airflow ${AIRFLOW_HOME}/*
@@ -87,7 +93,8 @@ VOLUME ${AIRFLOW_HOME}/logs
 USER airflow
 
 ENV PATH=$PATH::/usr/local/gcloud/google-cloud-sdk/bin/
-ENV PYTHONPATH=${PYTHONPATH}:/usr/local/lib/python2.7/dist-packages/
+ENV PYTHONPATH=${PYTHONPATH}:/usr/local/lib/python3.6/
+
 #ENV HDP_VERSION=2.6.1.0-129
 #export HDP_VERSION=${HDP_VERSION}
 #export HADOOP_CONF_DIR=/etc/hadoop/${HDP_VERSION}/0
