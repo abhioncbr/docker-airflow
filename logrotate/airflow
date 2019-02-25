@@ -1,0 +1,19 @@
+/usr/local/airflow/startup_log/airflow*.log {
+  hourly
+  compress
+  rotate 12
+  missingok
+  notifempty
+  copytruncate
+  create 644 airflow airflow
+}
+
+/usr/local/airflow/startup_log/redis*.log {
+  hourly
+  compress
+  rotate 12
+  missingok
+  notifempty
+  copytruncate
+  create 644 airflow airflow
+}
