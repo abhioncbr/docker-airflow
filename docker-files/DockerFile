@@ -7,6 +7,7 @@ MAINTAINER Abhishek Sharma <abhioncbr@yahoo.com>
 
 ARG PYTHON_DEPS
 ARG AIRFLOW_VERSION
+ARG AIRFLOW_PATCH_VERSION
 ARG AIRFLOW_DEPS="all"
 ARG BUILD_DEPS="freetds-dev libkrb5-dev libsasl2-dev libssl-dev libffi-dev libpq-dev git"
 ARG OTHER_DEPS="sshpass openssh-server openssh-client less gcc make wget vim curl rsync netcat logrotate"
@@ -45,16 +46,14 @@ RUN python -m pip install --upgrade pip setuptools wheel \
     && pip install apache-airflow[$AIRFLOW_DEPS]==$AIRFLOW_VERSION \
     && apt-get clean
 
-RUN groupadd -g 5006 airflow \
-    && useradd -ms /bin/bash -d ${AIRFLOW_HOME}  -u 5004 -g 5006 -p airflow airflow
+RUN groupadd -g 5555 airflow \
+    && useradd -ms /bin/bash -d ${AIRFLOW_HOME}  -u 5555 -g 5555 -p airflow airflow \
+    && echo "airflow:airflow" | chpasswd && adduser airflow sudo
 
 RUN mkdir /code-artifacts /data /home/airflow ${AIRFLOW_HOME}/startup_log ${AIRFLOW_HOME}/.ssh ${AIRFLOW_HOME}/.aws ${AIRFLOW_HOME}/.gcp ${AIRFLOW_HOME}/dags ${AIRFLOW_HOME}/logs ${AIRFLOW_HOME}/plugins \
     && mkdir -p /user/airflow \
-#    && mkdir ${AIRFLOW_HOME}/dags/example_dags
-#    && cp -r /usr/local/lib/python2.7/dist-packages/airflow/example_dags/* ${AIRFLOW_HOME}/dags/example_dags/ \
     && chown -R airflow:airflow ${AIRFLOW_HOME}/* /data /code-artifacts /user/airflow /home/airflow
 
-ADD script/entrypoint.sh ${AIRFLOW_HOME}/entrypoint.sh
 ADD config/airflow.cfg ${AIRFLOW_HOME}/airflow.cfg
 ADD config/user_add.py ${AIRFLOW_HOME}/user_add.py
 ADD config/rbac_user_add.py ${AIRFLOW_HOME}/rbac_user_add.py
@@ -62,11 +61,10 @@ ADD config/execute_continous_scheduler.sh ${AIRFLOW_HOME}/execute_continous_sche
 
 # airflow patch files present in airflowPatch folder
 RUN mkdir /tmp/airflow_patch
-ADD airflowPatch1.10.0/views.py /tmp/airflow_patch/views.py
-ADD airflowPatch1.10.0/models.py /tmp/airflow_patch/models.py
-ADD airflowPatch1.10.0/password_auth.py /tmp/airflow_patch/password_auth.py
-ADD airflowPatch1.10.0/e3a246e0dc1_current_schema.py /tmp/airflow_patch/e3a246e0dc1_current_schema.py
-RUN if [ $AIRFLOW_VERSION \< "1.10.2" ] ; then \
+ADD airflowPatch1.8/* /tmp/airflow_patch/airflowPatch1.8/
+ADD airflowPatch1.9/* /tmp/airflow_patch/airflowPatch1.9/
+ADD airflowPatch1.10/* /tmp/airflow_patch/airflowPatch1.10/
+RUN if [ ! -z "$AIRFLOW_PATCH_VERSION" ] ; then \
     cp /tmp/airflow_patch/models.py /usr/local/lib/python3.6/site-packages/airflow/models.py; \
     cp /tmp/airflow_patch/views.py /usr/local/lib/python3.6/site-packages/airflow/www/views.py; \
     cp /tmp/airflow_patch/password_auth.py /usr/local/lib/python3.6/site-packages/airflow/contrib/auth/backends/password_auth.py; \
@@ -78,7 +76,7 @@ RUN if [ $AIRFLOW_VERSION \< "1.10.2" ] ; then \
 fi
 RUN rm -rf /tmp/airflow_patch
 
-ADD airflowPatch1.10.0/s3_logger.py /usr/local/lib/python3.6/site-packages/airflow/config_templates/s3_logger.py
+ADD airflowExtraFeatures/s3_logger.py /usr/local/lib/python3.6/site-packages/airflow/config_templates/s3_logger.py
 RUN chown root:staff /usr/local/lib/python3.6/site-packages/airflow/config_templates/s3_logger.py
 
 
@@ -90,10 +88,17 @@ VOLUME ${AIRFLOW_HOME}/.aws
 VOLUME ${AIRFLOW_HOME}/dags
 VOLUME ${AIRFLOW_HOME}/logs
 
-USER airflow
-
 ENV PATH=$PATH::/usr/local/gcloud/google-cloud-sdk/bin/
 ENV PYTHONPATH=${PYTHONPATH}:/usr/local/lib/python3.6/
+
+#for airflow processes log rotation.
+ADD logrotate/airflow /etc/logrotate.d/airflow
+ADD logrotate/run_log_rotate.sh ${AIRFLOW_HOME}/run_log_rotate.sh
+
+#setting up logrotation cron.
+RUN echo "30 * * * * /bin/sh ${AIRFLOW_HOME}/run_log_rotate.sh >> ${AIRFLOW_HOME}/logRotate_logs.txt" >> ${AIRFLOW_HOME}/airflow_cron
+RUN crontab ${AIRFLOW_HOME}/airflow_cron
+RUN rm ${AIRFLOW_HOME}/airflow_cron
 
 #ENV HDP_VERSION=2.6.1.0-129
 #export HDP_VERSION=${HDP_VERSION}
@@ -104,5 +109,12 @@ ENV PYTHONPATH=${PYTHONPATH}:/usr/local/lib/python3.6/
 
 EXPOSE 5555 8793 2222 6379
 
+COPY script/docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+RUN ln -s /usr/local/bin/docker-entrypoint.sh /entrypoint.sh # backwards compat
+
 WORKDIR ${AIRFLOW_HOME}
-ENTRYPOINT ["./entrypoint.sh"]
+USER airflow
+
+HEALTHCHECK CMD ["curl", "-f", "http://localhost:2222/health"]
+ENTRYPOINT ["docker-entrypoint.sh"]

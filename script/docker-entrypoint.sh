@@ -55,10 +55,11 @@ help_note(){
   echo "##***************************************************** Please provide required arguments as per below information. *****************************************************##"
   echo "##                                                                                                                                                                       ##"
   echo "##************************************************************************* Required arguments- *************************************************************************##"
-  echo "## 1) '-m' or '--mode', should be either 'standalone' or 'cluster' for eg, -m|--mode=standalone or -m|--mode=cluster                                                     ##"
+  echo "## 1) '-m' or '--mode', should be either 'standalone' or 'prod' or 'cluster' for eg, -m|--mode=standalone or -m|--mode=prod or -m|--mode=cluster                         ##"
   echo "## If mode is 'cluster' than 2)'-t' or '--node_type', should be either 'server' or 'worker' for eg, -t|--node_type=server or -t|--node_type=worker                       ##"
-  echo "## If mode is 'cluster' than 3)'-d' or '--mysql_url' for eg, -d|--mysql_url=mysql://user:pswrd@db_host:port/db_name                                                      ##"
-  echo "## If mode is 'cluster' & node_type is 'worker' than 4)'-r' or '--redis_url', should be server node host url, for eg, -r|--redis_url=redis://server_container_ip:6379/0  ##"
+  echo "## If mode is 'prod' or 'cluster' than 3)'-d' or '--mysql_url' for eg, -d|--mysql_url=mysql://user:pswrd@db_host:port/db_name                                            ##"
+  echo "## If mode is 'prod' or 'cluster' than 4)'-r' or '--redis_url', should be server node host url, for eg, -r|--redis_url=redis://server_container_ip:6379/0                ##"
+  echo "## *** for node_type 'worker', redis_url is mandatory. ***                                                                                                               ##"
   echo "##                                                                                                                                                                       ##"
   echo "##************************************************************************* Optional arguments- *************************************************************************##"
   echo "## For S3 as dags log directory, '-s' or '--s3_path'. for eg, -s|--s3_path=s3://bucket-name/directory                                                                    ##"
@@ -91,8 +92,8 @@ print_mysql_url(){
 }
 
 print_node_type(){
-       if [[ -v NODE_TYPE ]] &&  [[ "$MODE" = "standalone" ]]; then
-       temp="  [Ignoring, since 'mode' is 'standalone']"
+       if [[ -v NODE_TYPE ]] &&  ([[ "$MODE" = "standalone" ]] || [[ "$MODE" = "prod" ]]); then
+       temp="  [Ignoring, since 'mode' is '$MODE']"
        fi
        echo "NODE_TYPE = ${NODE_TYPE} $temp"
 }
@@ -100,14 +101,12 @@ print_node_type(){
 print_redis_url(){
        if [[ -v REDIS_URL ]] && [[ "$MODE" = "standalone" ]]; then
        temp="[Ignoring, since 'mode' is 'standalone']"
-       elif [[ -v REDIS_URL ]] && [[ "$NODE_TYPE" = "server" ]]; then
-       temp="[Ignoring, since 'node_type' is 'server']"
        fi
        echo "REDIS_URL = ${REDIS_URL}  $temp"
 }
 
 validate_args(){
-    if [[ "$MODE" != "cluster" ]] && [[ "$MODE" != "standalone" ]]; then
+    if ([[ "$MODE" != "cluster" ]] && [[ "$MODE" != "standalone" ]] && [[ "$MODE" != "prod" ]]); then
         echo "Unknown Mode: '${MODE}'"
         help
         exit -1
@@ -240,18 +239,30 @@ set_airflow_metadataDB(){
     fi
 }
 
-parse_args "$@"
-validate_args
+#initalize redis
+set_or_start_redis(){
+	# Starting redis first as redis connection string is required for airflow.
+	if [[ -z REDIS_URL ]]; then
+	    echo starting redis
+	    exec -a redis-server redis-server --protected-mode no >> ${AIRFLOW_HOME}/startup_log/redis-server.log 2>&1 &
+	    sleep 5
+	    case "$(pidof redis-server | wc -w)" in
+		    0)  echo "redis is not started .. exiting."
+    		    exit 1
+    		    ;;
+		    1)  echo "redis-server is up & running, having pid:" $!
+    		    ;;
+	    esac
+	    REDIS_URL=redis://localhost:6379/0
+	 fi
+    set_celery_redis
+}
 
-# Starting airflow container in standalone mode.
-# Steps are : initialising airflow database, starting airflow scheduler & airflow webserver.
-if [[ "$MODE" = "standalone" ]]; then
-    set_optional_param
-    set_airflow_metadataDB
-
+#starting airflow scheduler.
+start_airflow_scheduler(){
 	# Starting airflow scheduler and writing scheduler log in file 'startup_log/airflow-scheduler.log'.
 	echo starting airflow scheduler
-	exec -a airflow-scheduler ${CMD} scheduler > ${AIRFLOW_HOME}/startup_log/airflow-scheduler.log 2>&1 &
+	exec -a airflow-scheduler ${CMD} scheduler >> ${AIRFLOW_HOME}/startup_log/airflow-scheduler.log 2>&1 &
 	sleep 5
 	case "$(pidof /usr/local/bin/python /usr/local/bin/airflow scheduler | wc -w)" in
 		0)  echo "airflow scheduler is not started .. exiting."
@@ -261,65 +272,17 @@ if [[ "$MODE" = "standalone" ]]; then
     		;;
 	esac
 
-	# Starting airflow web-server and writing log in to the file 'startup_log/airflow-server.log'.
-	echo "starting airflow web-server"
-	exec -a airflow-webserver ${CMD} webserver -p 2222 > ${AIRFLOW_HOME}/startup_log/airflow-server.log 2>&1
+    if [[ "$MODE" = "cluster"  ]] && [[ "$MODE" = "prod"  ]]; then
+        #running shell script to restart airflow scheduler in every 5 minutes.
+	    echo "Running shell script to restart airflow scheduler in every 5 minutes."
+	    sh ./execute_continous_scheduler.sh ${MYSQL_URL} ${REDIS_URL} &
+    fi
+}
 
-# Starting airflow server.
-# Steps are : initialising airflow database, starting redis server, starting airflow scheduler, starting airflow webserver
-elif [[ "$MODE" = "cluster" ]] && [[ "$NODE_TYPE" = "server" ]]; then
-   set_mysql
-   set_celery_executor
-   set_optional_param
-   set_airflow_metadataDB
-
-    # ============= Starting server processes =====================
-
-	# Starting redis first as redis connection string is required for airflow.
-	echo starting redis
-	exec -a redis-server redis-server --protected-mode no > ${AIRFLOW_HOME}/startup_log/redis-server.log 2>&1 &
-	sleep 5
-	case "$(pidof redis-server | wc -w)" in
-		0)  echo "redis is not started .. exiting."
-    		exit 1
-    		;;
-		1)  echo "redis-server is up & running, having pid:" $!
-    		;;
-	esac
-
-	REDIS_URL=redis://localhost:6379/0
-	set_celery_redis
-
-	# Starting airflow scheduler and writing scheduler log in file 'startup_log/airflow-scheduler.log'.
-	echo starting airflow scheduler
-	exec -a airflow-scheduler ${CMD} scheduler > ${AIRFLOW_HOME}/startup_log/airflow-scheduler.log 2>&1 &
-	sleep 5
-	case "$(pidof /usr/local/bin/python/usr/local/bin/airflow scheduler | wc -w)" in
-		0)  echo "airflow scheduler is not started .. exiting."
-    		exit 1
-    		;;
-		1)  echo "airflow scheduler is up & running, having pid:" $!
-    		;;
-	esac
-
-	#running shell script to restart airflow scheduler in every 5 minutes.
-	echo "Running shell script to restart airflow scheduler in every 5 minutes."
-	sh ./execute_continous_scheduler.sh ${MYSQL_URL} ${REDIS_URL} &
-
-	# Starting airflow web-server and writing log in to the file 'startup_log/airflow-server.log'.
-	echo "starting airflow web-server"
-	exec -a airflow-webserver ${CMD} webserver > ${AIRFLOW_HOME}/startup_log/airflow-server.log 2>&1
-
-# Starting airflow worker.
-elif [[ "$MODE" = "cluster" ]] && [[ "$NODE_TYPE" = "worker" ]]; then
-   set_mysql
-   set_celery_executor
-   set_celery_redis
-   set_optional_param
-
-	# Starting worker processes.
+# Starting airflow worker processes.
+start_airflow_worker(){
 	echo "starting airflow celery flower"
-    exec ${CMD} flower > ${AIRFLOW_HOME}/startup_log/airflow-celery-flower.log 2>&1 &
+    exec ${CMD} flower >> ${AIRFLOW_HOME}/startup_log/airflow-celery-flower.log 2>&1 &
     sleep 5
     case "$(pidof /usr/local/bin/python/usr/local/bin/flower | wc -w)" in
 		0)  echo "airflow flower is not started .. exiting."
@@ -331,9 +294,84 @@ elif [[ "$MODE" = "cluster" ]] && [[ "$NODE_TYPE" = "worker" ]]; then
 
 	echo "starting airflow worker"
 	QUEUE="default,$(hostname)"
-	exec ${CMD} worker -q ${QUEUE} > ${AIRFLOW_HOME}/startup_log/airflow-worker.log 2>&1
+	if [[ "$MODE" = "prod"  ]]; then
+	    exec ${CMD} worker -q ${QUEUE} >> ${AIRFLOW_HOME}/startup_log/airflow-worker.log 2>&1 &
+	else
+	    exec ${CMD} worker -q ${QUEUE} >> ${AIRFLOW_HOME}/startup_log/airflow-worker.log 2>&1
+	fi
+}
+
+# Starting airflow webserver processes.
+start_airflow_webserver(){
+    # Starting airflow web-server and writing log in to the file 'startup_log/airflow-server.log'.
+    echo "starting airflow web-server"
+	exec -a airflow-webserver ${CMD} webserver -p 2222 >> ${AIRFLOW_HOME}/startup_log/airflow-server.log 2>&1
+}
+
+if [[ -z "$MODE" ]]; then
+    parse_args "$@"
+fi
+validate_args
+
+# Starting airflow container in standalone mode.
+# Steps are : initialising airflow database, starting airflow scheduler & airflow webserver.
+if [[ "$MODE" = "standalone" ]]; then
+    set_optional_param
+    set_airflow_metadataDB
+
+	# Starting airflow scheduler and writing scheduler log in file 'startup_log/airflow-scheduler.log'.
+	start_airflow_scheduler
+
+	# Starting airflow web-server and writing log in to the file 'startup_log/airflow-server.log'.
+    start_airflow_webserver
+
+elif [[ "$MODE" == "prod" ]]; then
+    set_mysql
+    set_celery_executor
+    set_optional_param
+    set_airflow_metadataDB
+    set_or_start_redis
+
+    # ============= Starting or setting redis processes ===================
+    set_or_start_redis
+
+    # ============= Starting airflow scheduler processes ==================
+    start_airflow_scheduler
+
+    # ============= Starting airflow webserver processes ==================
+	start_airflow_webserver
+
+    # ============= Starting airflow worker processes =====================
+    start_airflow_worker
+
+# Starting airflow server.
+# Steps are : initialising airflow database, starting redis server, starting airflow scheduler, starting airflow webserver
+elif [[ "$MODE" = "cluster" ]] && [[ "$NODE_TYPE" = "server" ]]; then
+    set_mysql
+    set_celery_executor
+    set_optional_param
+    set_airflow_metadataDB
+
+    # ============= Starting or setting redis processes ===================
+    set_or_start_redis
+
+    # ============= Starting airflow scheduler processes ==================
+    start_airflow_scheduler
+
+    # ============= Starting airflow webserver processes ==================
+	start_airflow_webserver
+
+# Starting airflow worker.
+elif [[ "$MODE" = "cluster" ]] && [[ "$NODE_TYPE" = "worker" ]]; then
+    set_mysql
+    set_celery_executor
+    set_celery_redis
+    set_optional_param
+
+    # ============= Starting airflow worker processes =====================
+    start_airflow_worker
 
 # arguments is not in order
 else
-help_note
+    help_note
 fi
