@@ -1,0 +1,50 @@
+# VERSION 1.0 (apache-airflow)
+# AUTHOR: Abhishek Sharma<abhioncbr@yahoo.com>
+# DESCRIPTION: apache airflow docker-compose.yml
+
+version: '3'
+services:
+  redis:
+    image: redis:3.2
+    restart: always
+    ports:
+      - 6379:6379
+    volumes:
+      - redis:/data
+  mysql:
+    image: mysql:5.7
+    restart: always
+    environment:
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    ports:
+      - 3306:3306
+    volumes:
+      - mysql:/var/lib/mysql
+  airflow:
+    image: abhioncbr/docker-airflow:${AIRFLOW_VERSION}
+    restart: always
+    environment:
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASS: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_HOST: ${MYSQL_HOST}
+      MYSQL_PORT: ${MYSQL_PORT}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      MODE: ${MODE}
+    ports:
+      - 2222:2222
+      - 5555:5555
+    depends_on:
+      - mysql
+      - redis
+    volumes:
+      - ../airflow/dags:/usr/local/airflow/dags
+volumes:
+  mysql:
+    external: false
+  redis:
+    external: false
