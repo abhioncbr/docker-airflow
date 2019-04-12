@@ -14,6 +14,7 @@ services:
   mysql:
     image: mysql:5.7
     restart: always
+    command: --explicit_defaults_for_timestamp=1
     environment:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
@@ -27,13 +28,8 @@ services:
     image: abhioncbr/docker-airflow:${AIRFLOW_VERSION}
     restart: always
     environment:
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASS: ${MYSQL_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_HOST: ${MYSQL_HOST}
-      MYSQL_PORT: ${MYSQL_PORT}
-      REDIS_HOST: ${REDIS_HOST}
-      REDIS_PORT: ${REDIS_PORT}
+      MYSQL_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DATABASE}
+      REDIS_HOST: redis://${REDIS_HOST}:${REDIS_PORT}/0
       MODE: ${MODE}
     ports:
       - 2222:2222

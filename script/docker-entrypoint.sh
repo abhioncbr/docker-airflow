@@ -161,12 +161,13 @@ set_gcp_params(){
     echo "GOOGLE_APPLICATION_CREDENTIALS=/usr/local/airflow/.gcp/gcp-credentials.json">>~/.profile
 }
 
-set_celery_executor(){
+set_executor(){
+    EXECUTOR=$1
 	echo "setting 'Celery' as scheduler type..."
-    echo "Setting AIRFLOW__CORE__EXECUTOR=CeleryExecutor"
-    export AIRFLOW__CORE__EXECUTOR=CeleryExecutor
-    echo "export AIRFLOW__CORE__EXECUTOR=CeleryExecutor">>~/.bashrc
-    echo "AIRFLOW__CORE__EXECUTOR=CeleryExecutor">>~/.profile
+    echo "Setting AIRFLOW__CORE__EXECUTOR=$EXECUTOR"
+    export AIRFLOW__CORE__EXECUTOR=${EXECUTOR}
+    echo "export AIRFLOW__CORE__EXECUTOR=$EXECUTOR">>~/.bashrc
+    echo "AIRFLOW__CORE__EXECUTOR=$EXECUTOR">>~/.profile
 }
 
 set_mysql(){
@@ -281,16 +282,19 @@ start_airflow_scheduler(){
 
 # Starting airflow worker processes.
 start_airflow_worker(){
-	echo "starting airflow celery flower"
-    exec ${CMD} flower >> ${AIRFLOW_HOME}/startup_log/airflow-celery-flower.log 2>&1 &
-    sleep 5
-    case "$(pidof /usr/local/bin/python/usr/local/bin/flower | wc -w)" in
-		0)  echo "airflow flower is not started .. exiting."
-    		exit 1
-    		;;
-		1)  echo "airflow flower is up & running, having pid:" $!
-    		;;
-	esac
+    EXECUTOR=$1
+    if [[ "$EXECUTOR" = "CeleryExecutor"  ]]; then
+	    echo "starting airflow celery flower"
+        exec ${CMD} flower >> ${AIRFLOW_HOME}/startup_log/airflow-celery-flower.log 2>&1 &
+        sleep 5
+        case "$(pidof /usr/local/bin/python/usr/local/bin/flower | wc -w)" in
+		    0)  echo "airflow flower is not started .. exiting."
+    		    exit 1
+    		    ;;
+		    1)  echo "airflow flower is up & running, having pid:" $!
+    		    ;;
+	    esac
+	fi
 
 	echo "starting airflow worker"
 	QUEUE="default,$(hostname)"
@@ -311,6 +315,7 @@ start_airflow_webserver(){
 if [[ -z "$MODE" ]]; then
     parse_args "$@"
 fi
+# validating the arguments.
 validate_args
 
 # Starting airflow container in standalone mode.
@@ -327,13 +332,9 @@ if [[ "$MODE" = "standalone" ]]; then
 
 elif [[ "$MODE" == "prod" ]]; then
     set_mysql
-    set_celery_executor
+    set_executor 'LocalExecutor'
     set_optional_param
     set_airflow_metadataDB
-    set_or_start_redis
-
-    # ============= Starting or setting redis processes ===================
-    set_or_start_redis
 
     # ============= Starting airflow scheduler processes ==================
     start_airflow_scheduler
@@ -342,13 +343,13 @@ elif [[ "$MODE" == "prod" ]]; then
 	start_airflow_webserver
 
     # ============= Starting airflow worker processes =====================
-    start_airflow_worker
+    start_airflow_worker 'LocalExecutor'
 
 # Starting airflow server.
 # Steps are : initialising airflow database, starting redis server, starting airflow scheduler, starting airflow webserver
 elif [[ "$MODE" = "cluster" ]] && [[ "$NODE_TYPE" = "server" ]]; then
     set_mysql
-    set_celery_executor
+    set_executor 'CeleryExecutor'
     set_optional_param
     set_airflow_metadataDB
 
@@ -364,12 +365,12 @@ elif [[ "$MODE" = "cluster" ]] && [[ "$NODE_TYPE" = "server" ]]; then
 # Starting airflow worker.
 elif [[ "$MODE" = "cluster" ]] && [[ "$NODE_TYPE" = "worker" ]]; then
     set_mysql
-    set_celery_executor
+    set_executor 'CeleryExecutor'
     set_celery_redis
     set_optional_param
 
     # ============= Starting airflow worker processes =====================
-    start_airflow_worker
+    start_airflow_worker 'CeleryExecutor'
 
 # arguments is not in order
 else
