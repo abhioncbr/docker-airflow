@@ -117,5 +117,8 @@ RUN ln -s /usr/local/bin/docker-entrypoint.sh /entrypoint.sh # backwards compat
 WORKDIR ${AIRFLOW_HOME}
 USER airflow
 
+#setting default mode of docker-airflow as 'standalone'. Will be helpful when from Kitematic.
+ENV MODE standalone
+
 HEALTHCHECK CMD ["curl", "-f", "http://localhost:2222/health"]
 ENTRYPOINT ["docker-entrypoint.sh"]
