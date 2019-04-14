@@ -133,7 +133,7 @@ validate_args(){
 
 set_airflow_s3_params(){
     echo "setting s3 log directory ..."
-    echo "Setting AIRFLOW__CORE__S3_LOG_FOLDER=${S3_PATH}"
+    echo "Setting AIRFLOW__CORE__S3_LOG_FOLDER=$S3_PATH"
     export AIRFLOW__CORE__S3_LOG_FOLDER=${S3_PATH}
     echo "export AIRFLOW__CORE__S3_LOG_FOLDER="${S3_PATH}>>~/.bashrc
     echo "AIRFLOW__CORE__S3_LOG_FOLDER="${S3_PATH}>>~/.profile
@@ -211,11 +211,14 @@ set_web_authentication(){
 
 set_optional_param(){
     set_web_authentication
-    if [[ -v S3_PATH ]]; then
+
+    #if provided s3_path value is not null && not empty.
+    if [[ ! -z ${S3_PATH} ]]; then
       set_airflow_s3_params
     fi
 
-    if [[ -v GCP_PROJECT ]] && [[ -v GCP_USER_NAME ]]; then
+    #if provided gcp_project & gcp_user_name value is not null && not empty.
+    if [[ ! -z ${GCP_PROJECT} ]] && [[ ! -z ${GCP_USER_NAME} ]]; then
       set_gcp_params
     fi
 }
@@ -243,7 +246,7 @@ set_airflow_metadataDB(){
 #initalize redis
 set_or_start_redis(){
 	# Starting redis first as redis connection string is required for airflow.
-	if [[ -z REDIS_URL ]]; then
+	if [[ -z ${REDIS_URL} ]]; then
 	    echo starting redis
 	    exec -a redis-server redis-server --protected-mode no >> ${AIRFLOW_HOME}/startup_log/redis-server.log 2>&1 &
 	    sleep 5
@@ -287,7 +290,7 @@ start_airflow_worker(){
 	    echo "starting airflow celery flower"
         exec ${CMD} flower >> ${AIRFLOW_HOME}/startup_log/airflow-celery-flower.log 2>&1 &
         sleep 5
-        case "$(pidof /usr/local/bin/python/usr/local/bin/flower | wc -w)" in
+        case "$(pidof /usr/local/bin/python /usr/local/bin/flower | wc -w)" in
 		    0)  echo "airflow flower is not started .. exiting."
     		    exit 1
     		    ;;

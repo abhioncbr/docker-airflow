@@ -1,0 +1,40 @@
+# VERSION 1.0 (apache-airflow)
+# AUTHOR: Abhishek Sharma<abhioncbr@yahoo.com>
+# DESCRIPTION: apache airflow docker-compose.yml
+
+version: '3'
+services:
+  mysql:
+    image: mysql:5.7
+    restart: always
+    command: --explicit_defaults_for_timestamp=1
+    container_name: airflow-metadata_db
+    environment:
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    ports:
+      - 3306:3306
+    volumes:
+      - mysql:/var/lib/mysql
+  airflow:
+    image: abhioncbr/docker-airflow:${AIRFLOW_VERSION}
+    restart: always
+    container_name: airflow-prod
+    environment:
+      MYSQL_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DATABASE}
+      MODE: prod
+      S3_PATH: ${S3_PATH}
+      RBAC_AUTH: ${RBAC_AUTH}
+      GCP_PROJECT: ${GCP_PROJECT}
+      GCP_USER_NAME: ${GCP_USER_NAME}
+    ports:
+      - 2222:2222
+    depends_on:
+      - mysql
+    volumes:
+      - ../airflow/dags:/usr/local/airflow/dags
+volumes:
+  mysql:
+    external: false
