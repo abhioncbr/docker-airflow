@@ -7,6 +7,7 @@ services:
   redis:
     image: redis:3.2
     restart: always
+    container_name: airflow-task_queue
     ports:
       - 6379:6379
     volumes:
@@ -15,6 +16,7 @@ services:
     image: mysql:5.7
     restart: always
     command: --explicit_defaults_for_timestamp=1
+    container_name: airflow-metadata_db
     environment:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
@@ -24,15 +26,40 @@ services:
       - 3306:3306
     volumes:
       - mysql:/var/lib/mysql
-  airflow:
+  airflow-server:
     image: abhioncbr/docker-airflow:${AIRFLOW_VERSION}
     restart: always
+    container_name: airflow-server
     environment:
+      MODE: cluster
+      NODE_TYPE: server
+      REDIS_URL: redis://${REDIS_HOST}:${REDIS_PORT}/0
       MYSQL_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DATABASE}
-      REDIS_HOST: redis://${REDIS_HOST}:${REDIS_PORT}/0
-      MODE: ${MODE}
+      S3_PATH: ${S3_PATH}
+      RBAC_AUTH: ${RBAC_AUTH}
+      GCP_PROJECT: ${GCP_PROJECT}
+      GCP_USER_NAME: ${GCP_USER_NAME}
     ports:
       - 2222:2222
+    depends_on:
+      - mysql
+      - redis
+    volumes:
+      - ../airflow/dags:/usr/local/airflow/dags
+  airflow-worker:
+    image: abhioncbr/docker-airflow:${AIRFLOW_VERSION}
+    restart: always
+    container_name: airflow-worker
+    environment:
+      MODE: cluster
+      NODE_TYPE: worker
+      REDIS_URL: redis://${REDIS_HOST}:${REDIS_PORT}/0
+      MYSQL_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DATABASE}
+      S3_PATH: ${S3_PATH}
+      RBAC_AUTH: ${RBAC_AUTH}
+      GCP_PROJECT: ${GCP_PROJECT}
+      GCP_USER_NAME: ${GCP_USER_NAME}
+    ports:
       - 5555:5555
     depends_on:
       - mysql
