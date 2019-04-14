@@ -6,17 +6,16 @@ This is a repository for building [Docker](https://www.docker.com/) container of
 * Similarly, for Docker follow [curated list of resources](https://github.com/veggiemonk/awesome-docker).
 
 ## Airflow components stack
-- Airflow version: Notation for representing version `XX.YY.ZZ` which means either [1.10.0] or [1.9.0]
-- Execution Mode: `standalone`(simple container for exploration purpose ) or `cluster` (for production or long run use-cases, container runs as either `server` or `worker` )
-- Backend database: standalone- sqlite, cluster- Mysql
-- Scheduler: standalone- Sequential, cluster- Celery
+- Airflow version: Notation for representing version `XX.YY.ZZ`
+- Execution Mode: `standalone`(simple container for exploration purpose, based on sqlite as airflow metadata db & SequentialExecutor ) or `prod`(single node based, LocalExecutor amd mysql as airflow metadata db) and `cluster` (for distributed production long run use-cases, container runs as either `server` or `worker` )
+- Backend database: standalone- Sqlite, prod & cluster- Mysql
+- Scheduler: standalone- Sequential, prod- LocalExecutor and Cluster- Celery
 - Task queue: cluster- Redis
 - Log location: local file system (Default) or AWS S3 (through `entrypoint-s3.sh`)
 - User authentication: Password based & support for multiple users with `superuser` privilege.
 - Docker base image: debian
 - Code enhancement: password based multiple users supporting super-user(can see all dags of all owner) feature. Currently, Airflow is working on the password based multi user feature.
 - Other features: support for google cloud platform packages in container.
-- Multiple `entrypoint.sh` for various supports like writing logs to s3 & initializing gcp in airflow container. 
 
 ## Airflow ports
 - airflow portal port: 2222
@@ -100,7 +99,4 @@ This is a repository for building [Docker](https://www.docker.com/) container of
             abhioncbr/airflow-XX.YY.ZZ \
             -m=cluster -t=worker -d=mysql://user:password@host.docker.internal:3306:3306/<airflow-db-name> -r=redis://host.docker.internal:6379/0 &   
             ``` 
-     
-## Setting up Google Cloud Platform environment
-* Update gcp-credentials.json file with Google credentials. [Update Required]
-* In `entrypoint.sh` file uncomment commands related to setting up google cloud platform. [Update Required]
+    
