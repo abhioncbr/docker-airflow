@@ -55,7 +55,7 @@ RUN mkdir /code-artifacts /data /home/airflow ${AIRFLOW_HOME}/startup_log ${AIRF
     && mkdir -p /user/airflow \
     && chown -R airflow:airflow ${AIRFLOW_HOME}/* /data /code-artifacts /user/airflow /home/airflow
 
-ADD config/airflow.cfg ${AIRFLOW_HOME}/airflow.cfg
+ADD airflow-config/airflow-${AIRFLOW_VERSION}.cfg ${AIRFLOW_HOME}/airflow.cfg
 ADD config/user_add.py ${AIRFLOW_HOME}/user_add.py
 ADD config/rbac_user_add.py ${AIRFLOW_HOME}/rbac_user_add.py
 ADD config/execute_continous_scheduler.sh ${AIRFLOW_HOME}/execute_continous_scheduler.sh
