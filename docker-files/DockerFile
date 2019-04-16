@@ -8,7 +8,7 @@ MAINTAINER Abhishek Sharma <abhioncbr@yahoo.com>
 ARG PYTHON_DEPS="boto3 "
 ARG AIRFLOW_VERSION
 ARG AIRFLOW_PATCH_VERSION
-ARG AIRFLOW_DEPS="all"
+ARG AIRFLOW_DEPS="all,password"
 ARG BUILD_DEPS="freetds-dev libkrb5-dev libsasl2-dev libssl-dev libffi-dev libpq-dev git"
 ARG OTHER_DEPS="sshpass openssh-server openssh-client less gcc make wget vim curl rsync netcat logrotate"
 ARG APT_DEPS="$BUILD_DEPS $OTHER_DEPS libsasl2-dev freetds-bin build-essential default-libmysqlclient-dev apt-utils locales "
@@ -27,13 +27,15 @@ RUN apt-get update && apt policy redis-server
 #Install java for java based application.
 RUN apt-get update && apt policy openjdk-8-jdk
 
+#for older versions[1.8.1, 1.8.2] of airflow, pip downgrading is required.
+RUN if [ ${AIRFLOW_VERSION} \< "1.8.3" ]; then pip install pip==9.0; \
+else python -m pip install --upgrade pip setuptools wheel; fi
+
 #Install python dependencies.
 RUN if [ -n "${PYTHON_DEPS}" ]; then pip install --no-cache-dir ${PYTHON_DEPS}; fi
 
 #Install Airflow all packages
-RUN python -m pip install --upgrade pip setuptools wheel \
-    && pip install apache-airflow[$AIRFLOW_DEPS]==$AIRFLOW_VERSION \
-    && apt-get clean
+RUN pip install apache-airflow[$AIRFLOW_DEPS]==$AIRFLOW_VERSION && apt-get clean
 
 #Install GCloud[GCP] packages.
 RUN curl https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz > /tmp/google-cloud-sdk.tar.gz
@@ -66,10 +68,10 @@ ADD airflowPatch1.8/* /tmp/airflow_patch/airflowPatch1.8/
 ADD airflowPatch1.9/* /tmp/airflow_patch/airflowPatch1.9/
 ADD airflowPatch1.10/* /tmp/airflow_patch/airflowPatch1.10/
 RUN if [ ! -z "$AIRFLOW_PATCH_VERSION" ] ; then \
-    cp /tmp/airflow_patch/models.py /usr/local/lib/python3.6/site-packages/airflow/models.py; \
-    cp /tmp/airflow_patch/views.py /usr/local/lib/python3.6/site-packages/airflow/www/views.py; \
-    cp /tmp/airflow_patch/password_auth.py /usr/local/lib/python3.6/site-packages/airflow/contrib/auth/backends/password_auth.py; \
-    cp /tmp/airflow_patch/e3a246e0dc1_current_schema.py /usr/local/lib/python3.6/site-packages/airflow/migrations/versions/e3a246e0dc1_current_schema.py; \
+    cp /tmp/airflow_patch/airflowPatch${AIRFLOW_PATCH_VERSION}/models.py /usr/local/lib/python3.6/site-packages/airflow/models.py; \
+    cp /tmp/airflow_patch/airflowPatch${AIRFLOW_PATCH_VERSION}/views.py /usr/local/lib/python3.6/site-packages/airflow/www/views.py; \
+    cp /tmp/airflow_patch/airflowPatch${AIRFLOW_PATCH_VERSION}/password_auth.py /usr/local/lib/python3.6/site-packages/airflow/contrib/auth/backends/password_auth.py; \
+    cp /tmp/airflow_patch/airflowPatch${AIRFLOW_PATCH_VERSION}/e3a246e0dc1_current_schema.py /usr/local/lib/python3.6/site-packages/airflow/migrations/versions/e3a246e0dc1_current_schema.py; \
     chown root:staff /usr/local/lib/python3.6/site-packages/airflow/models.py; \
     chown root:staff /usr/local/lib/python3.6/site-packages/airflow/www/views.py; \
     chown root:staff /usr/local/lib/python3.6/site-packages/airflow/contrib/auth/backends/password_auth.py; \
