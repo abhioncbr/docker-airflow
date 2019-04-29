@@ -22,10 +22,10 @@ RUN set -x \
     && if [ -n "${APT_DEPS}" ]; then apt-get install -y $APT_DEPS; fi
 
 #Install Redis
-RUN apt-get update && apt policy redis-server
+RUN apt-get update && apt policy redis-server && apt-get install -y redis-server
 
 #Install java for java based application.
-RUN apt-get update && apt policy openjdk-8-jdk
+RUN apt-get update && apt policy openjdk-8-jdk && apt-get install -y openjdk-8-jdk
 
 #for older versions[1.8.1, 1.8.2] of airflow, pip downgrading is required.
 RUN if [ ${AIRFLOW_VERSION} \< "1.8.3" ]; then pip install pip==9.0; \
