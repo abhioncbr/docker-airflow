@@ -17,7 +17,7 @@ jobs:
       - run:
          name: Build Docker image
          command: docker build -t abhioncbr/docker-airflow:$IMAGE_VERSION --build-arg AIRFLOW_VERSION=$AIRFLOW_VERSION
-           --build-arg AIRFLOW_PATCH_VERSION=$AIRFLOW_PATCH_VERSION -f ~/docker-airflow/docker-files/DockerFile .
+           --build-arg AIRFLOW_PATCH_VERSION=$AIRFLOW_PATCH_VERSION -f ~/docker-airflow/docker-files/Dockerfile .
 
       - run:
           name: Push to DockerHub
