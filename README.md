@@ -1,9 +1,19 @@
 [<img src="https://github.com/abhioncbr/docker-airflow/raw/master/airflow-logo.png" align="right">](https://airflow.apache.org/)
-# docker-airflow [repo for building docker based airflow container]
+# docker-airflow
+[![CircleCI](https://circleci.com/gh/abhioncbr/docker-airflow/tree/master.svg?style=svg)](https://circleci.com/gh/abhioncbr/docker-airflow/tree/master)
+[![License](http://img.shields.io/:license-Apache%202-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0.txt)
+[![Code Climate](https://codeclimate.com/github/codeclimate/codeclimate/badges/gpa.svg)](https://codeclimate.com/github/abhioncbr/docker-airflow)
+
 This is a repository for building [Docker](https://www.docker.com/) container of [Apache Airflow](https://airflow.apache.org/) ([incubating](https://incubator.apache.org/)).
 
 * For understanding & knowing more about Airflow, please follow [curated list of resources](https://github.com/jghoman/awesome-apache-airflow).
 * Similarly, for Docker follow [curated list of resources](https://github.com/veggiemonk/awesome-docker).
+
+## Images
+
+|Image|Pulls|Tags|
+|:---|:---:|:---:|
+|abhioncbr/docker-airflow|[![Docker Pulls](https://img.shields.io/docker/pulls/abhioncbr/docker-airflow.svg)](https://cloud.docker.com/u/abhioncbr/repository/docker/abhioncbr/docker-airflow)|[tags](https://cloud.docker.com/repository/docker/abhioncbr/docker-airflow/tags)|
 
 ## Airflow components stack
 - Airflow version: Notation for representing version `XX.YY.ZZ`
@@ -13,7 +23,6 @@ This is a repository for building [Docker](https://www.docker.com/) container of
 - Task queue: cluster- Redis
 - Log location: local file system (Default) or AWS S3 (through `entrypoint-s3.sh`)
 - User authentication: Password based & support for multiple users with `superuser` privilege.
-- Docker base image: debian
 - Code enhancement: password based multiple users supporting super-user(can see all dags of all owner) feature. Currently, Airflow is working on the password based multi user feature.
 - Other features: support for google cloud platform packages in container.
 
@@ -27,28 +36,23 @@ This is a repository for building [Docker](https://www.docker.com/) container of
 - In server container: redis, airflow webserver & scheduler is running.
 - In worker container: airflow worker & celery flower ui service is running.
 
-## General information about airflow docker image
-* There are two docker files in the folder `docker-files`.
-* Base image(DockerFile-BaseXX.YY.ZZ) - file for building base image which consist of packages of airflow, java, redis and other basic components.
-* Working image(DockerFile-XX.YY.ZZ) - Depend on the base image. Build image with patches of airflow, creating user, installing gcp packages and setting up the working environment.
-* Airflow scheduler needs a restart after sometime for properly scheduling of the task. Shell script for restarting scheduler is present in folder `config`
-* Airflow container by default is configured for writing logs on local filesystem but can be configured for writing on AWS S3. AWS credentials needs to be updated in `credentials` file in folder `config`.
-
 ## How to build images
-* for base image - There are two options
-  * build image, if you want to do some customization - 
+* [DockerFile](docker-files/Dockerfile) uses `airflow-version` as a `build-arg`.
+* build image, if you want to do some customization - 
     ```shell 
-       docker build -t airflow-baseXX.YY.ZZ:latest --file=~/docker-airflow/DockerFile-BaseXX.YY.ZZ . --rm
+       docker build -t abhioncbr/docker-airflow:$IMAGE_VERSION --build-arg AIRFLOW_VERSION=$AIRFLOW_VERSION
+                  --build-arg AIRFLOW_PATCH_VERSION=$AIRFLOW_PATCH_VERSION -f ~/docker-airflow/docker-files/DockerFile .
     ```
-  * download image - 
-    ```shell
-       docker pull abhioncbr/airflow-baseXX.YY.ZZ` and tag image as `airflow-baseXX.YY.ZZ
-    ```
+    * Arg IMAGE_VERSION value should be airflow version for example, 1.10.3 or 1.10.2
+    * Arg AIRFLOW_PATCH_VERSION value should be the major release version of airflow for example for 1.10.2 it should be 1.10.
+
+## How to run using Kitmatic
+* Simplest way for exploration purpose, using [Kitematic](https://kitematic.com)(Run containers through a simple, yet powerful graphical user interface.) 
+    * Search abhioncbr/docker-airflow Image on [docker-hub](https://hub.docker.com/r/abhioncbr/docker-airflow/) 
+        [<img src="search-docker-airflow-Kitematic.png" alt="search-docker-airflow-Kitematic">](search-docker-airflow-Kitematic.png)
     
-* for working image -
-    ```shell
-       docker build -t airflow-XX.YY.ZZ:latest --file=~/docker-airflow/DockerFileXX.YY.ZZ . --rm
-    ```
+    * Start a container through Kitematic UI.
+        [<img src="run-docker-airflow-Kitematic.png" alt="run-docker-airflow-Kitematic">](run-docker-airflow-Kitematic.png)
 
 ## How to run
 * General commands -
@@ -99,4 +103,17 @@ This is a repository for building [Docker](https://www.docker.com/) container of
             abhioncbr/airflow-XX.YY.ZZ \
             -m=cluster -t=worker -d=mysql://user:password@host.docker.internal:3306:3306/<airflow-db-name> -r=redis://host.docker.internal:6379/0 &   
             ``` 
+<<<<<<< HEAD
+    [<img src="docker-airflow-entrypoint-args.png" alt="Airflow">](docker-airflow-entrypoint-args.png)      
     
+## Distributed execution of airflow
+* As mentioned above, docker image of airflow can be leveraged to run in complete distributed run
+    * single docker-airflow container in `server` mode for serving the UI of the airflow, redis for celery task & scheduler.
+    * multiple docker-airflow containers in `worker` mode for executing tasks using celery executor.
+    * centralised airflow metadata database.
+* Image below depicts the docker-airflow distributed platform:
+    [<img src="airflow-aws-deployment.png" alt="Distributed-Airflow">](airflow-aws-deployment.png)   
+             
+=======
+    
+>>>>>>> 925808aefcc6012e9d16a2f0eb23014bbe5de263
