@@ -17,9 +17,9 @@ This is a repository for building [Docker](https://www.docker.com/) container of
 
 ## Airflow components stack
 - Airflow version: Notation for representing version `XX.YY.ZZ`
-- Execution Mode: `standalone`(simple container for exploration purpose ) or `cluster` (for production or long run use-cases, container runs as either `server` or `worker` )
-- Backend database: standalone- sqlite, cluster- Mysql
-- Scheduler: standalone- Sequential, cluster- Celery
+- Execution Mode: `standalone`(simple container for exploration purpose, based on sqlite as airflow metadata db & SequentialExecutor ) or `prod`(single node based, LocalExecutor amd mysql as airflow metadata db) and `cluster` (for distributed production long run use-cases, container runs as either `server` or `worker` )
+- Backend database: standalone- Sqlite, prod & cluster- Mysql
+- Scheduler: standalone- Sequential, prod- LocalExecutor and Cluster- Celery
 - Task queue: cluster- Redis
 - Log location: local file system (Default) or AWS S3 (through `entrypoint-s3.sh`)
 - User authentication: Password based & support for multiple users with `superuser` privilege.
@@ -103,6 +103,7 @@ This is a repository for building [Docker](https://www.docker.com/) container of
             abhioncbr/airflow-XX.YY.ZZ \
             -m=cluster -t=worker -d=mysql://user:password@host.docker.internal:3306:3306/<airflow-db-name> -r=redis://host.docker.internal:6379/0 &   
             ``` 
+<<<<<<< HEAD
     [<img src="docker-airflow-entrypoint-args.png" alt="Airflow">](docker-airflow-entrypoint-args.png)      
     
 ## Distributed execution of airflow
@@ -113,3 +114,6 @@ This is a repository for building [Docker](https://www.docker.com/) container of
 * Image below depicts the docker-airflow distributed platform:
     [<img src="airflow-aws-deployment.png" alt="Distributed-Airflow">](airflow-aws-deployment.png)   
              
+=======
+    
+>>>>>>> 925808aefcc6012e9d16a2f0eb23014bbe5de263
