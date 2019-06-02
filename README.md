@@ -103,7 +103,6 @@ This is a repository for building [Docker](https://www.docker.com/) container of
             abhioncbr/airflow-XX.YY.ZZ \
             -m=cluster -t=worker -d=mysql://user:password@host.docker.internal:3306:3306/<airflow-db-name> -r=redis://host.docker.internal:6379/0 &   
             ``` 
-<<<<<<< HEAD
     [<img src="docker-airflow-entrypoint-args.png" alt="Airflow">](docker-airflow-entrypoint-args.png)      
     
 ## Distributed execution of airflow
@@ -113,7 +112,3 @@ This is a repository for building [Docker](https://www.docker.com/) container of
     * centralised airflow metadata database.
 * Image below depicts the docker-airflow distributed platform:
     [<img src="airflow-aws-deployment.png" alt="Distributed-Airflow">](airflow-aws-deployment.png)   
-             
-=======
-    
->>>>>>> 925808aefcc6012e9d16a2f0eb23014bbe5de263
